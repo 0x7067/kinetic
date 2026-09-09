@@ -1,0 +1,30 @@
+{
+  "name": "kinetic-marble-workshop",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "description": "A small, real-physics marble workshop for people and agents.",
+  "bin": {
+    "kinetic": "./cli.js"
+  },
+  "scripts": {
+    "start": "node server/http.js",
+    "dev": "node --watch server/http.js",
+    "cli": "node cli.js",
+    "test": "node --test tests/*.test.js",
+    "test:browser": "python tests/browser.py",
+    "test:mcp": "node tests/mcp-smoke.js",
+    "build": "node scripts/build.js",
+    "verify": "npm test && npm run build",
+    "test:replay": "python tests/replay-browser.py"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "three": "0.186.0",
+    "@dimforge/rapier3d-compat": "0.20.0",
+    "@modelcontextprotocol/sdk": "1.18.2",
+    "zod": "3.25.76"
+  }
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f7f5ef" />
+  <meta name="description" content="Kinetic is a little physics workshop for you and your agent. Build a marble run. Watch it fail. Make it work." />
+  <title>Kinetic — Ideas in motion</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23283f36'/%3E%3Ccircle cx='24' cy='22' r='10' fill='%23e7b75b'/%3E%3Cpath d='M16 46h33l-9-18' fill='none' stroke='%23f6f1e5' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./src/style.css" />
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/","@dimforge/rapier3d-compat":"./vendor/rapier.mjs"}}</script>
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="#" aria-label="Kinetic home"><svg viewBox="0 0 38 38" aria-hidden="true"><circle cx="14" cy="12" r="7"/><path d="M7 30h25L24 16"/></svg>kinetic<span>.</span></a>
+    <span class="header-note">A LITTLE LAB FOR BIG IDEAS</span>
+    <div class="header-actions"><span class="connection" id="connection"><i></i>Starting workshop</span><button class="text-button" id="save" title="Download project">Save project <span>↗</span></button><button class="outline-button" id="connect">Agent tools <span>⌘</span></button></div>
+  </header>
+  <main>
+    <section class="intro"><div><div class="eyebrow"><span class="small-line"></span> THE MARBLE WORKSHOP <span class="version">VOL. 001</span></div><h1>Ideas in motion<span>.</span></h1></div><p>Build something. Let gravity have a say.<br>Make it a little better.</p></section>
+    <div class="workspace">
+      <div class="stage">
+      <section class="workbench" aria-label="3D workshop">
+        <div class="canvas-heading"><span><i class="live-dot"></i> THE FIRST LEAP</span><span class="tag">3D WORKSPACE</span></div>
+        <div id="viewport"><div class="loading" id="loading"><span class="spinner"></span>Setting the world in motion…</div></div>
+        <div class="canvas-caption"><span><span class="key-icon">↔</span> Drag to orbit · scroll to zoom</span><button id="evidence-mode" class="text-button" style="pointer-events:auto;font-size:inherit" aria-pressed="false" title="Show world bounds, surface normals and local axes">Spatial view</button><div class="view-switch" role="group" aria-label="Camera view"><button data-camera="iso" class="active" title="Perspective view" aria-label="Perspective view">◈</button><button data-camera="top" title="Top view" aria-label="Top view">⊞</button><button data-camera="side" title="Side view" aria-label="Side view">▤</button></div></div>
+        <div class="transport"><button class="run-button" id="run"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z"/></svg><span>Run marble</span><kbd>SPACE</kbd></button><button id="reset-run" class="icon-button" title="Reset marble" aria-label="Reset marble">↺</button><span class="transport-divider"></span><button class="solver-button" id="solve"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2l2.3 5.7L18 10l-5.7 2.3L10 18l-2.3-5.7L2 10l5.7-2.3z"/></svg><span>Auto-tune</span></button><button class="icon-button" id="sound" aria-label="Enable sound" title="Enable sound">♪<span class="sound-off">×</span></button></div>
+        <div id="outcome" class="outcome" role="status" aria-live="polite"></div>
+      </section>
+    <section id="replay-lab" class="replay-lab" aria-label="Recorded physics replay" hidden>
+      <div class="replay-heading"><div><span class="eyebrow">LOOK A LITTLE CLOSER</span><h3>Replay lab<span id="replay-revision"></span></h3></div><button id="return-edit" class="text-button">Return to editing ↗</button></div>
+      <div class="replay-controls"><button id="replay-toggle" class="outline-button" aria-label="Pause replay">Pause</button><button id="replay-back" class="icon-button" aria-label="Previous recorded frame">‹</button><input id="replay-time" type="range" min="0" max="10" step="0.001" value="0" aria-label="Replay time in seconds"/><button id="replay-next" class="icon-button" aria-label="Next recorded frame">›</button><output id="replay-clock">0.00 / 0.00 s</output></div>
+      <div class="replay-readout"><span id="replay-position"></span><span id="replay-speed"></span><span id="replay-state"></span></div>
+      <div id="replay-contacts" class="replay-contacts" aria-label="Jump to a recorded contact"></div>
+      <div class="comparison-bar"><label for="compare-run">Compare with</label><select id="compare-run"><option value="">No ghost</option></select><span id="compare-summary">Select a previous attempt to overlay its recorded path.</span></div>
+    </section>
+      </div>
+      <aside class="sidebar">
+        <section class="challenge"><div class="eyebrow">YOUR CHALLENGE <span>01 / 01</span></div><h2>A leap of faith.</h2><p>Get the marble from the launch ramp into the cup. No touching the workbench.</p><div class="constraints"><span>◉ One marble</span><span>▰ Three parts</span><span>↓ Real gravity</span></div></section>
+        <div class="panel-tabs" role="tablist"><button id="build-tab" class="active" role="tab" aria-selected="true">Build <span>03</span></button><button id="notes-tab" role="tab" aria-selected="false">Feedback <span id="note-count">0</span></button></div>
+        <section id="build-panel" class="build-panel"><div class="section-label">YOUR PARTS <span>SELECT TO ADJUST</span></div><div id="parts"></div><div id="inspector"></div><div class="history-actions"><button id="undo" class="text-button" disabled>↶ Undo</button><button id="redo" class="text-button" disabled>Redo ↷</button></div></section>
+        <section id="notes-panel" hidden><p class="muted">Point to a part. Tell your agent what should change.</p><div id="feedback-target" class="feedback-target"></div><textarea id="feedback-text" maxlength="1000" placeholder="This landing feels too high…" aria-label="Feedback for your agent"></textarea><button id="send-feedback" class="outline-button full">Send feedback <span>↗</span></button><div id="notes"></div></section>
+        <div class="sidebar-foot"><i class="live-dot"></i><span id="solver-note">Auto-tune uses local search. No model or API key.</span></div>
+      </aside>
+    </div>
+    <section class="run-journal"><div class="journal-head"><h3>Trial &amp; a little error<span id="attempt-count">0 runs</span></h3><div class="journal-actions"><label class="replay-speed">Replay <select id="speed" aria-label="Replay speed"><option value="1">1×</option><option value="2">2×</option><option value="0.5">½×</option></select></label><button id="reset-layout" class="text-button">Start fresh ↗</button></div></div><div id="attempts" class="attempts"><div class="empty-journal"><span class="empty-orbit">◎</span><div>Your first experiment is waiting.<small>Run the marble, watch what happens, then change one thing.</small></div><span class="hand-drawn-arrow">↗</span></div></div></section>
+    <footer><span>MADE FOR CURIOUS MINDS.</span><span>Three.js × Rapier <span class="footer-dot">·</span> Fixed-step physics, not a canned animation</span><button class="text-button" id="open-project">Open project ↗</button><input type="file" id="import" accept="application/json,.json" hidden /></footer>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="agent-dialog"><button class="dialog-close icon-button" id="close-dialog" aria-label="Close agent setup">×</button><div class="eyebrow">BRING YOUR OWN AGENT</div><h2>Give it a workbench.</h2><p>Shell-capable agents should use the CLI first: inspect the geometry, run real physics, change one thing, then measure again. MCP is available below for clients that prefer structured tools and native images.</p><div class="agent-tools"><code>kinetic inspect</code><code>kinetic probe bridge</code><code>kinetic run</code><code>kinetic set bridge y=…</code></div><pre id="agent-config"></pre><button id="copy-config" class="outline-button full">Copy MCP configuration</button><p class="muted">Keep this browser open when the agent requests PNG captures. The CLI and MCP share the same project, revisions, feedback and physics. No account, cloud model, or subscription is built in.</p></dialog>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

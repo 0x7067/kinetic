@@ -1,0 +1,67 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { Workshop, RULES, initialProject, validateProject, applyOperations, uid } from '../src/model.js';
+import { simulate } from '../src/physics.js';
+import { propose, score } from '../src/solver.js';
+
+const lower = [{type:'update',id:'bridge',changes:{y:2.25}}];
+test('atomic edits reject an invalid second operation without changing the first',()=>{
+  const w=new Workshop(),before=w.state();
+  assert.throws(()=>w.edit({expectedRevision:0,operations:[...lower,{type:'update',id:'home',changes:{y:Infinity}}]}),/finite/);
+  assert.deepEqual(w.state(),before);
+});
+test('stale revisions are rejected, not silently merged',()=>{
+  const w=new Workshop();w.edit({expectedRevision:0,operations:lower});
+  assert.throws(()=>w.edit({expectedRevision:0,operations:lower}),/Expected revision 1/);
+});
+test('a retried request is applied once; changed payload with same ID is rejected',()=>{
+  const w=new Workshop(),request={expectedRevision:0,requestId:'retry-1',operations:lower};
+  const a=w.edit(request),b=w.edit(request);assert.equal(a.revision,1);assert.equal(b.replayed,true);assert.equal(w.project.revision,1);
+  assert.throws(()=>w.edit({...request,operations:[{type:'remove',id:'home'}]}),/reused/);
+});
+test('a no-op edit and removal do not create history entries',()=>{
+  const w=new Workshop();const r=w.edit({expectedRevision:0,operations:[{type:'remove',id:'missing'}]});assert.equal(r.changed,false);assert.equal(w.project.revision,0);assert.equal(w.history.length,0);
+});
+test('undo and redo preserve object IDs and monotonically increase revisions',()=>{
+  const w=new Workshop();w.edit({expectedRevision:0,operations:lower});w.undo(1);assert.equal(w.project.parts[1].y,2.5);assert.equal(w.project.revision,2);w.redo(2);assert.equal(w.project.parts[1].y,2.25);assert.equal(w.project.parts[1].id,'bridge');assert.equal(w.project.revision,3);
+});
+test('new edits clear redo and history stays bounded',()=>{
+  const w=new Workshop();for(let i=0;i<30;i++)w.edit({expectedRevision:w.project.revision,operations:[{type:'update',id:'bridge',changes:{y:2+i/100}}]});assert.equal(w.history.length,20);w.undo(w.project.revision);w.edit({expectedRevision:w.project.revision,operations:lower});assert.equal(w.future.length,0);
+});
+test('project import round-trips IDs and rejects challenge-rule changes',()=>{
+  const p=initialProject();assert.deepEqual(validateProject(JSON.parse(JSON.stringify(p))),p);
+  for(const key of ['gravity','target','start','scripts','__proto__']){const bad=JSON.parse(JSON.stringify(p));Object.defineProperty(bad,key,{value:0,enumerable:true});assert.throws(()=>validateProject(bad),/cannot be imported/);}
+});
+test('unknown fields, code and invalid identifiers fail loudly',()=>{
+  const p=initialProject();assert.throws(()=>applyOperations(p,[{type:'run_js',code:'alert(1)'}]));
+  assert.throws(()=>applyOperations(p,[{type:'update',id:'bridge',changes:{colour:'red'}}]),/Unknown/);
+  assert.throws(()=>applyOperations(p,[{type:'update',id:'bridge',changes:{id:'target'}}]),/immutable/);
+  const bad=initialProject();bad.parts[1].id='<script>';assert.throws(()=>validateProject(bad),/alphanumeric/);
+});
+test('part budget and uniqueness are enforced',()=>{
+  const p=initialProject();assert.throws(()=>applyOperations(p,[{type:'add',part:{...p.parts[0],id:'extra'}}]),/allows 3/);
+  assert.throws(()=>applyOperations(p,[{type:'add',part:p.parts[0]}]),/already exists/);
+});
+test('feedback carries exact revision, target and run; blank comments fail',()=>{
+  const w=new Workshop();assert.throws(()=>w.addFeedback({text:' '}),/1–1000/);
+  const n=w.addFeedback({text:'Lower this.',targetId:'bridge',runId:'run1',time:.5,camera:{position:[1,2,3]}},{id:'run1',project:w.project,duration:2});
+  assert.equal(n.targetId,'bridge');assert.equal(n.revision,0);assert.equal(n.runId,'run1');assert.equal(n.resolved,false);
+  assert.throws(()=>w.addFeedback({text:'Hi',targetId:'missing'}),/no longer exists/);
+});
+test('run IDs are unique',()=>{assert.notEqual(uid(),uid());});
+test('initial layout really fails; changing only the landing height succeeds',async()=>{
+  const p=initialProject(),before=JSON.stringify(p),failed=await simulate(p);assert.equal(failed.success,false);assert.equal(failed.status,'fell-short');assert.ok(failed.contacts.some(c=>c.part==='bridge'));assert.ok(failed.closest>6);assert.equal(JSON.stringify(p),before);
+  const fixed=applyOperations(p,lower),passed=await simulate(fixed);assert.equal(passed.success,true);assert.ok(passed.contacts.some(c=>c.part==='cup'));assert.ok(passed.duration<10);assert.deepEqual(RULES.start,{x:-5.5,y:4.65,z:0});assert.equal(fixed.parts[0].x,p.parts[0].x);assert.equal(fixed.parts[2].y,p.parts[2].y);
+});
+test('resetting physics repeats the same trajectory rather than continuing a fallen marble',async()=>{
+  const p=applyOperations(initialProject(),lower),a=await simulate(p),b=await simulate(p);assert.deepEqual(a.frames,b.frames);assert.deepEqual(a.contacts,b.contacts);assert.equal(a.duration,b.duration);
+});
+test('an empty scene cannot claim success just because a simulation completed',async()=>{
+  const p=initialProject();p.parts=[];const run=await simulate(p);assert.equal(run.success,false);assert.ok(run.contacts.some(c=>c.part==='workbench'));assert.ok(run.duration<10);
+});
+test('local search proposes from observations and solves within the explicit budget',async()=>{
+  let p=initialProject(),best=await simulate(p),count=1;const log=[{status:best.status,closest:best.closest}];
+  for(let i=0;i<12&&!best.success;i++){const move=propose(p,best,i);if(!move)continue;const next=applyOperations(p,move.operations),r=await simulate(next);count++;log.push({label:move.label,status:r.status,closest:r.closest});if(score(r)>score(best)){p=next;best=r;}}
+  assert.equal(best.success,true,JSON.stringify(log));assert.ok(count<=13);assert.equal(p.parts.length,3);
+  console.log('Measured solver evidence:',JSON.stringify({count,log}));
+});

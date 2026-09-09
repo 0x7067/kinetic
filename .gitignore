@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.kinetic/
+evidence/
+__pycache__/
+*.log
+.DS_Store
+
+__pycache__/
