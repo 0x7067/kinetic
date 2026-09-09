@@ -1,6 +1,29 @@
-# Kinetic continuation checkpoint — v0.4.0 Replay Lab
+# Kinetic continuation checkpoint — agent usability
 
 Keep build → run → observe → revise → save small. CLI first; MCP remains a thin adapter. No general game editor or built-in model service.
+
+## Current increment — 9 September 2026
+
+Started from clean `main` at `baa153e`, remote `https://github.com/0x7067/kinetic.git`, and created `codex/agent-usability`. Main and prior work were preserved. Reproduced the baseline locally before evaluating changes: 67 Node tests, build, 35 original browser checks, 24 replay checks, and nine external stdio MCP checks with five PNGs.
+
+Four fresh evaluator contexts completed before/after CLI and MCP trials on separately initialized, solvable perturbations. Each layout had a 12-simulation limit. Before: CLI A/B succeeded in 2/1 simulations, MCP in 2/2. After: both interfaces succeeded in 2/2. The second layout mirrored the first and shared its evaluator, so these are bounded sequential usability trials, not independent novice trials or a transport ranking. Evaluators received only discovery and returned evidence; restrictions were instruction-based in a shared filesystem. No external model API or auto-tune was used by them.
+
+Implemented the observed fixes: discoverable CLI edit fields/bounds and atomic batch examples; creation of missing save directories with overwrite protection; measured Rapier contact normals to distinguish obstructing impacts from supported landings. Normals survive shared CLI/MCP replay without a rerun. Full before/after measurements, run IDs and limitations are in `docs/AGENT-USABILITY.md`; starting layouts are `examples/offset-left.json` and `examples/offset-right.json`.
+
+Completed checks on the final application code:
+
+- `npm test`: **70/70 passed**, including executable batch help, atomic undo, nested save/import/overwrite protection, mirrored contact normals and live replay parity.
+- `npm run build`: static and standalone output passed, **6.51 MB** standalone HTML.
+- `evidence/venv/bin/python tests/browser.py`: **35/35 passed**; external stdio MCP **9/9 with five PNGs**.
+- `evidence/venv/bin/python tests/replay-browser.py`: **24/24 passed**. Both browser suites report zero JavaScript exceptions.
+- Actual desktop/mobile failed and successful runs, comparison, feedback and offline PNGs inspected. Representative full-recording and demo frames inspected. Initial browser launch failures preserved; Chromium acceptance required the approved execution outside the launch sandbox.
+- Four maintainer feasibility cases retain identical physics frames/outcomes after adding normals. Ripwire reports zero gating regressions (two minor findings: one complexity point in simulation evidence serialization and one CLI line); its test obligations were covered by the full suites. `git diff --check` passed.
+
+Evidence: baseline copies in `evidence/baseline/`; final logs at `evidence/final-{node,build,browser,replay}.log`; final PNGs/reports in `evidence/final/`; complete evaluator transcripts, timing/byte metrics and reports in `evidence/usability/` and `evidence/usability/after/`. Short demo: `evidence/final/kinetic-demo.mp4`. Full current recordings are listed in `docs/AGENT-USABILITY.md`. Exact committed source is recorded in the ignored `evidence/final/source-revision.txt` after committing.
+
+Open the local app at `http://127.0.0.1:4317` while `node cli.js serve` is running. The local service was restarted with the changed code and exercised through CLI captures, retaining a failed run and a successful revision. This is a foreground development service, not hosted deployment or unattended agent work.
+
+Next: improve post-run/post-edit CLI hints, then use different failure modes with one fresh evaluator per task. Bounds, revisions, fixed rules, replay isolation and persistence contracts remain intact. Known limits: no Safari/iPhone or hardware-performance verification; first-contact normals are not exhaustive contact manifolds; replay/history are in memory; the pinned SDK's npm audit finding remains recorded in `evidence/npm-audit.json`. No dependency upgrade, public deployment or recurring job is claimed.
 
 ## Standalone extraction — 9 September 2026
 
@@ -35,7 +58,7 @@ A perturbed track required three measured simulations and two edits: lowering th
 
 The implementer had source knowledge. This is not a fresh-agent trial, a fair CLI/MCP efficiency comparison, or proof of general autonomous task success.
 
-## Next useful experiment and boundaries
+## Earlier next-step proposal and boundaries
 
 Have a fresh evaluator solve held-out perturbed layouts using only CLI help or MCP discovery under identical attempt budgets. Do not add a framework or bigger parts catalog before this demonstrates useful feedback.
 

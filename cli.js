@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { mkdirSync, writeFileSync, readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { createClient, ClientError, summarize } from './server/client.js';
 import { LIMITS } from './src/model.js';
 
@@ -31,6 +31,33 @@ const usage = {
   save: 'kinetic save project.json [--force]', import: 'kinetic import project.json --revision N',
   feedback: 'kinetic feedback list | show ID | resolve ID [...]',
   doctor: 'kinetic doctor', serve: 'kinetic serve (foreground; PORT and KINETIC_DATA configure the service)',
+};
+const editFields = `Editable fields: name (1–60 characters, not blank), ${Object.entries(LIMITS).map(([field,[min,max]])=>`${field} (${min} to ${max})`).join(', ')}.
+Distances are metres, Y is up; angle (pitch) and yaw are degrees. Bounds are inclusive.
+Use IDs from inspect. An update cannot change id or kind. Gravity, spawn, cup and rules are locked.`;
+const commandDetails = {
+  run: 'A completed attempt can fail: read success/status. Contacts are the first impact with each object.\nContact normal points from the struck surface toward the marble (world coordinates); unavailable normals are null.\nContact position is the marble centre and velocity is measured after the physics step.\nUse replay RUN_ID --at SECONDS to inspect a recorded contact without another simulation.',
+  save: 'Creates missing parent directories. Refuses to overwrite an existing file unless --force is supplied.\nExports the current editable project, not recordings or feedback.',
+  set: `${editFields}
+Supply one or more field=value arguments; quote names containing spaces.
+Example: kinetic set bridge 'name=Landing deck' --revision N
+For several parts in one revision/undo step, use kinetic batch --help.`,
+  batch: `${editFields}
+The file must contain a JSON array of 1–20 operations (at most 100 kB).
+All operations commit together as one revision/undo step, or none do on error.
+Operation shapes:
+  {"type":"update","id":"PART_ID","changes":{"FIELD":VALUE}}
+  {"type":"remove","id":"PART_ID"}
+  {"type":"add","part":{"id":"NEW_ID","kind":"ramp","name":"New deck","x":0,"y":1,"z":0,"angle":0,"yaw":0,"length":2}}
+For add, all shown part fields are required; kind is ramp, platform or barrier.
+IDs start with a letter, then letters/digits/_/-, at most 40 characters; new IDs must be unique.
+At most three parts. To replace a part at the budget, remove it before adding its replacement.
+Save this naming-only example as operations.json, then use the inspected --revision:
+\`\`\`json
+[{"type":"update","id":"bridge","changes":{"name":"Landing deck"}},{"type":"update","id":"home","changes":{"name":"Final deck"}}]
+\`\`\`
+kinetic batch operations.json --revision N --request-id unique-edit-id
+Retry an uncertain result with the same request ID and identical payload; use a new ID for a different edit.`,
 };
 const help = `Kinetic ${VERSION} — a real-physics workshop for people and agents.
 
@@ -126,6 +153,7 @@ function readJSON(file) {
 }
 const n=(value,d=2)=>Number(value).toFixed(d);
 const xyz=p=>`(${n(p.x)}, ${n(p.y)}, ${n(p.z)})`;
+const contactText=c=>`${c.part}${c.surface?'/'+c.surface:''}@${n(c.time,4)}s${c.velocity?` vx=${n(c.velocity.x)}m/s`:''} normal=${c.normal?xyz(c.normal):'unavailable'}`;
 function inspectText(s) {
   return [
     `revision ${s.project.revision} | ${s.project.parts.length}/${s.rules.maxParts} parts | undo ${s.canUndo?'yes':'no'} | redo ${s.canRedo?'yes':'no'}`,
@@ -139,7 +167,7 @@ function inspectText(s) {
 }
 async function main() {
   const {command,options:o,positional:a=[],topic}=parse();
-  if(command==='help'){console.log(topic&&usage[topic]?`${usage[topic]}\n${['set','batch','undo','redo','reset','import'].includes(topic)?'Use the inspected --revision; edits are never implicitly rebased.\n':''}Global options: --json, --full (with --json), --url, --capture-dir.\nUnknown flags are rejected before connecting.`:help);return;}
+  if(command==='help'){console.log(topic&&usage[topic]?`${usage[topic]}\n${commandDetails[topic]||''}\n${['set','batch','undo','redo','reset','import'].includes(topic)?'Use the inspected --revision; edits are never implicitly rebased.\n':''}Global options: --json, --full (with --json), --url, --capture-dir.\nUnknown flags are rejected before connecting.`:help);return;}
   if(command==='version'){console.log(o.json?JSON.stringify({version:VERSION}):VERSION);return;}
   // Validate user intent before any network request.
   let operations;
@@ -164,7 +192,7 @@ async function main() {
     text=`baseline ${value.baseline.id} r${value.baseline.revision}: ${value.baseline.status}\ncandidate ${value.candidate.id} r${value.candidate.revision}: ${value.candidate.status}\nclosest delta ${n(value.closestDelta,4)}m; duration delta ${n(value.durationDelta,4)}s\n`+value.changes.map(c=>`${c.id}: ${c.type} ${Object.entries(c.fields||{}).map(([k,v])=>`${k} ${v.before} -> ${v.after}`).join(', ')}`).join('\n')+'\n'+value.interpretation;
   } else if(command==='run') {
     value=await client.run({...(o.revision===undefined?{}:{expectedRevision:Number(o.revision)}),capture:!!o.capture,...(o.capture?{view}:{})});
-    text=`${value.success?'SUCCESS':'FAIL'} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\nclosest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}\ncontacts ${value.contacts.map(c=>`${c.part}${c.surface?'/'+c.surface:''}@${n(c.time)}s${c.velocity?` vx=${n(c.velocity.x)}m/s`:''}`).join(', ')}\n${value.message}\nnext: ${value.success?'kinetic save working-project.json':'kinetic probe <last-part>; kinetic view side --focus <last-part>'}`;
+    text=`${value.success?'SUCCESS':'FAIL'} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\nclosest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}\ncontacts ${value.contacts.map(contactText).join(', ')}\n${value.message}\nnext: ${value.success?'kinetic save working-project.json':'kinetic probe <last-part>; kinetic view side --focus <last-part>'}`;
   } else if(command==='view') { value=await client.view({...view,mode:a[0]||'iso'});text=`view ${a[0]||'iso'} | focus ${o.focus||'scene'} | overlays ${o.overlays?'on':'off'}`; }
   else if(command==='set'||command==='batch') {
     const requestId=o['request-id']||crypto.randomUUID();
@@ -176,6 +204,7 @@ async function main() {
     text=`${command}: ${value.changed===false?'no change':'applied'} | revision ${value.revision??value.project.revision}`;
   } else if(command==='save') {
     const state=await client.request('/api/state'); const path=resolve(a[0]);
+    mkdirSync(dirname(path),{recursive:true});
     writeFileSync(path,JSON.stringify(state.project,null,2),{flag:o.force?'w':'wx',mode:0o600});
     value={path,revision:state.project.revision};text=`saved revision ${value.revision}: ${path}`;
   } else if(command==='import') {

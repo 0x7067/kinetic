@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { sampleRun, compareRuns } from '../src/replay.js';
 import { simulate } from '../src/physics.js';
 import { initialProject, Workshop } from '../src/model.js';
-import { Quaternion } from 'three';
+import { Euler, Quaternion, Vector3, MathUtils } from 'three';
 
 const project=initialProject();
 const makeRun=()=>({id:'recording',project,revision:0,duration:2,closest:1,status:'fell-short',success:false,end:{x:2,y:1,z:0},contacts:[],frames:[
@@ -64,4 +64,27 @@ test('surface evidence distinguishes a blocked rail from a deck landing on a per
   assert.equal(landed.contacts.find(c => c.part === 'bridge').surface, 'deck');
   assert.equal(landed.success, true);
   assert.ok(landed.contacts.every(c => typeof c.surface === 'string'));
+});
+
+test('recorded world normals distinguish an upstream deck impact from a supported landing with yaw', async () => {
+  for (const sign of [-1, 1]) {
+    const project = initialProject(), bridge = project.parts[1];
+    Object.assign(bridge, { y: 2.65, z: sign * .35, angle: -8, yaw: sign * 6 });
+    Object.assign(project.parts[2], { z: -sign * .175, yaw: -sign * 6 });
+    const blocked = await simulate(project);
+    Object.assign(bridge, { y: 2.25, z: 0 });
+    const landed = await simulate(project);
+    assert.equal(blocked.success, false);
+    assert.equal(landed.success, true);
+    const inverse = new Quaternion().setFromEuler(new Euler(0, MathUtils.degToRad(bridge.yaw), MathUtils.degToRad(bridge.angle), 'YXZ')).invert();
+    const blockedNormal = new Vector3().copy(blocked.contacts.find(c => c.part === bridge.id).normal).applyQuaternion(inverse);
+    const landingNormal = new Vector3().copy(landed.contacts.find(c => c.part === bridge.id).normal).applyQuaternion(inverse);
+    assert.ok(blockedNormal.x < -.95 && Math.abs(blockedNormal.y) < .05, 'the upstream end opposes forward travel');
+    assert.ok(landingNormal.y > .8, 'the receiving surface supports the marble from below');
+    for (const run of [blocked, landed]) {
+      for (const contact of run.contacts) assert.ok(Math.abs(new Vector3().copy(contact.normal).length() - 1) < .001);
+      const bench = run.contacts.find(c => c.part === 'workbench');
+      if (bench) assert.deepEqual(bench.normal, { x: 0, y: 1, z: 0 });
+    }
+  }
 });

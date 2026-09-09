@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -79,6 +79,35 @@ test('CLI exposes a complete inspect -> run -> edit -> run -> undo loop', async 
   assert.equal(doctor.reachable, true);
   assert.equal(doctor.fixedGravity, true);
   assert.equal(doctor.stableIds, true);
+
+  await t.test('the batch help example applies atomically and one undo restores both parts', () => {
+    const help = spawnSync(process.execPath, ['cli.js', 'batch', '--help'], {
+      cwd: ROOT, encoding: 'utf8', env: { ...process.env, KINETIC_URL: 'http://127.0.0.1:1' },
+    });
+    assert.equal(help.status, 0, help.stdout + help.stderr);
+    const operations = JSON.parse(help.stdout.match(/```json\n([\s\S]*?)\n```/)[1]);
+    const file = join(folder, 'operations.json');
+    writeFileSync(file, JSON.stringify(operations));
+    const edited = cli('batch', file, '--revision', String(restored.project.revision));
+    assert.equal(edited.revision, restored.project.revision + 1);
+    for (const op of operations) assert.equal(edited.project.parts.find(p => p.id === op.id).name, op.changes.name);
+    cli('undo', '--revision', String(edited.revision));
+    assert.deepEqual(cli('inspect').project.parts, restored.project.parts);
+  });
+
+  await t.test('save creates parent directories, preserves existing files, and exports an importable project', () => {
+    const file = join(folder, 'new', 'nested', 'project.json');
+    const before = cli('inspect').project;
+    cli('save', file);
+    assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), before);
+    const saved = readFileSync(file, 'utf8');
+    const duplicate = spawnSync(process.execPath, ['cli.js', 'save', file, '--url', URL, '--json'], { cwd: ROOT, encoding: 'utf8' });
+    assert.equal(duplicate.status, 1);
+    assert.equal(JSON.parse(duplicate.stdout).error.code, 'FILE_EXISTS');
+    assert.equal(readFileSync(file, 'utf8'), saved);
+    cli('import', file, '--revision', String(before.revision));
+    assert.deepEqual(cli('inspect').project.parts, before.parts);
+  });
 });
 
 test('CLI help is useful without a running server and global flags can precede commands', () => {

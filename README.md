@@ -24,7 +24,7 @@ Select **Return to editing**, change the layout and run again. **Compare with** 
 
 Historical recordings show their own project revision, with editing disabled until you return to the current layout. Feedback attaches the displayed object, run, simulated time, revision, camera and PNG rather than quietly attributing an old scene to a newer document.
 
-Three.js supplies quaternion interpolation, world transforms, spatial bounds, raycasting, frame-focused captures and the comparison geometry. Replay interpolates between recorded samples; it neither reruns physics nor fits an invented curve. Samples include release, first contacts and the true final state. Contact positions are the marble's centre after the physics step. Surface labels distinguish decks, side rails, barriers, cup floor/walls and the workbench; they do not claim an exhaustive manifold/contact log.
+Three.js supplies quaternion interpolation, world transforms, spatial bounds, raycasting, frame-focused captures and the comparison geometry. Replay interpolates between recorded samples; it neither reruns physics nor fits an invented curve. Samples include release, first contacts and the true final state. Contact positions are the marble's centre after the physics step. Surface labels distinguish decks, side rails, barriers, cup floor/walls and the workbench. Each first contact also records a Rapier world-space normal pointing from the struck surface toward the marble, or `null` when unavailable. Compare it with the deck normal from `probe` to distinguish an end impact from a supported landing. This is one measured manifold normal per object's first contact, not an exhaustive contact log or an inferred face label.
 
 ## Agent interface: CLI first
 
@@ -42,9 +42,13 @@ node cli.js save working-project.json
 
 Replace the run ID placeholders with IDs returned by `run` or `runs`. Use the revision returned by `inspect` for edits: `node cli.js set PART_ID FIELD=VALUE --revision N`. Supported fields are `name`, `x`, `y`, `z`, `angle`, `yaw`, and `length`. `batch` applies typed add/update/remove operations atomically. `undo`, `redo`, `reset` and `import` also require the inspected revision; they never silently rebase a stale edit.
 
+`set --help` lists field bounds and units; `batch --help` includes operation shapes and a runnable naming-only example. A batch commits all edits in one revision and one undo step, or none on error. `save` creates missing parent directories and refuses to replace an existing file unless `--force` is supplied.
+
 `replay` and `compare` only read retained evidence: they do not create attempts or alter the layout. Add `--json` for structured output, and `--full --json` only when full traces are needed. Captures are PNG files with camera, run, revision and time metadata. Images require an open browser; unavailable images are explicitly reported. A remote capture preserves the human's camera and scrubber. A physics miss exits zero because the simulation completed: inspect `success` and `status`.
 
 Try `examples/misaligned-landing.json` through `import` for a less forgiving layout with the same fixed rules. `docs/CLI-EVALUATION-v04.md` records a source-informed maintainer exercise, not a blind agent benchmark.
+
+`docs/AGENT-USABILITY.md` records the subsequent isolated CLI/MCP trials, observed friction, and verification of the fixes. These small sequential trials do not establish a CLI-versus-MCP ranking.
 
 ## MCP adapter
 

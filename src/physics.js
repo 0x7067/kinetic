@@ -6,6 +6,16 @@ export function rotation(part) {
   const a = part.angle * Math.PI / 360, b = part.yaw * Math.PI / 360;
   return { x: Math.sin(b) * Math.sin(a), y: Math.sin(b) * Math.cos(a), z: Math.cos(b) * Math.sin(a), w: Math.cos(b) * Math.cos(a) };
 }
+/** Orient Rapier's manifold normal from the struck collider toward the marble. */
+function contactNormal(world, collider, marble) {
+  let normal = null;
+  world.contactPair(collider, marble, (manifold, flipped) => {
+    if (normal || !manifold.numContacts()) return;
+    const n = manifold.normal(), sign = flipped ? -1 : 1;
+    normal = { x: n.x * sign, y: n.y * sign, z: n.z * sign };
+  });
+  return normal;
+}
 /** A fresh, fixed-timestep world per attempt. The model never changes gravity, spawn, or the target. */
 export async function simulate(input) {
   await ready();
@@ -53,13 +63,13 @@ export async function simulate(input) {
         if (!started) return;
         const name = names.get(other);
         lastTouched = name;
-        if (!seen.has(name)) { newContacts.push({name, surface: surfaces.get(other)}); seen.add(name); }
+        if (!seen.has(name)) { newContacts.push({name, surface: surfaces.get(other), normal: contactNormal(world, world.getCollider(other), ballCollider)}); seen.add(name); }
         if (name === 'workbench') hitBench = true;
       });
       const p = ball.translation(), v = ball.linvel(), q = ball.rotation();
       const speed = Math.hypot(v.x, v.y, v.z);
       maxSpeed = Math.max(maxSpeed, speed);
-      for (const {name, surface} of newContacts) contacts.push({ part: name, surface, time: round(elapsed), position: point(p), velocity: point(v), speed: round(speed) });
+      for (const {name, surface, normal} of newContacts) contacts.push({ part: name, surface, normal: normal && point(normal), time: round(elapsed), position: point(p), velocity: point(v), speed: round(speed) });
       const distance = Math.hypot(p.x - goal.x, p.y - goal.y, p.z - goal.z);
       if (distance < closest) { closest = distance; closestPoint = point(p); closestTime = round(elapsed); }
       if (tick % 2 === 0 || newContacts.length) frames.push({ t: round(elapsed), x: p.x, y: p.y, z: p.z, q: [q.x, q.y, q.z, q.w], vx: v.x, vy: v.y, vz: v.z, speed });

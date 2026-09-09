@@ -27,6 +27,8 @@ test('CLI and live MCP expose identical read-only replay and comparison facts',a
   await client.connect(transport);const names=(await client.listTools()).tools.map(t=>t.name);assert.ok(names.includes('kinetic_replay')&&names.includes('kinetic_compare'));
   const fromMcp=await client.callTool({name:'kinetic_replay',arguments:{runId:first.id,time:1.2,capture:false}});assert.ok(!fromMcp.isError);
   const facts=JSON.parse(fromMcp.content[0].text);assert.deepEqual(facts,paused.value);
+  assert.deepEqual(facts.run.contacts,first.contacts);
+  assert.ok(facts.run.contacts.find(c=>c.part==='bridge').normal.x < -.9);
   const comp=await client.callTool({name:'kinetic_compare',arguments:{baseline:first.id,candidate:second.id}});assert.deepEqual(JSON.parse(comp.content[0].text),delta.value);
  }finally{await client.close();}
  const s=await state();assert.equal(s.attempts.length,2);assert.equal(s.project.revision,1);assert.equal(s.project.parts[1].y,2.2);
