@@ -1,5 +1,9 @@
 # Kinetic — general workshop checkpoint
 
+## Local merge — 10 September 2026
+
+At the user's request, local `main` was fast-forwarded from `baa153e` to verified workshop commit `eceb7a335368c21dd0fa7e17204cee6b216c5088`, including the prior agent-usability increment. The working tree was clean and ancestry was checked; the merge required no conflict resolution or application changes. The 87 Node tests, 80 browser checks, build and live MCP evidence below still apply to the identical application source. This checkpoint update is documentation only. No remote push was performed; existing limitations remain unchanged.
+
 ## Completed increment — 10 September 2026
 
 Implemented the agreed general, agent-accessible workshop on `codex/general-workshop`, starting from the tested agent-usability increment `e94bd21271b1f753464a59f186bc837e44be08cb`. Main remains unchanged. The marble challenge is one preserved example, alongside a blank scene and “Motion & meaning.” The current version is 0.5.0.
