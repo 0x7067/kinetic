@@ -28,5 +28,24 @@ test('suggested camera containment checks every corner, not mere intersection',(
   }
 });
 test('empty scene facts are explicit',()=>{
- const p=initialProject();p.parts=[];const a=analyzeScene(p);assert.equal(a.sceneBounds,null);assert.deepEqual(a.cameraRecommendations,[]);
+  const p=initialProject();p.parts=[];p.world={objects:[]};delete p.judge;
+  const a=analyzeScene(p);assert.equal(a.sceneBounds,null);assert.deepEqual(a.cameraRecommendations,[]);
+});
+test('partsless marble-cup still has scene bounds from world objects',()=>{
+  const p=initialProject();p.parts=[];
+  const a=analyzeScene(p);
+  const marble=p.world.objects.find(o=>o.kind==='marble');
+  const cup=p.world.objects.find(o=>o.kind==='cup');
+  assert.ok(a.sceneBounds);
+  assert.ok(a.cameraRecommendations.length>=1);
+  assert.ok(a.sceneBounds.min.x<=marble.x);
+  assert.ok(a.sceneBounds.max.x>=cup.x);
+  assert.ok(a.sceneBounds.max.y>=marble.y);
+});
+test('lights and cameras do not invent scene bounds by themselves',()=>{
+  const p=initialProject();p.parts=[];p.world={objects:[
+    {id:'key-light',kind:'light',name:'Key',x:-5,y:12,z:5},
+    {id:'shot',kind:'camera',name:'Shot',x:9,y:10,z:13},
+  ]};
+  const a=analyzeScene(p);assert.equal(a.sceneBounds,null);assert.deepEqual(a.cameraRecommendations,[]);
 });

@@ -46,6 +46,15 @@ function boxRecord(box) {
     sphere: { center: vec(sphere.center), radius: round(sphere.radius) },
   };
 }
+function unionRecord(sceneBox, record) {
+  sceneBox.union(new THREE.Box3(
+    new THREE.Vector3(record.bounds.min.x, record.bounds.min.y, record.bounds.min.z),
+    new THREE.Vector3(record.bounds.max.x, record.bounds.max.y, record.bounds.max.z),
+  ));
+}
+function contributesToSceneBounds(object) {
+  return object.kind !== 'light' && object.kind !== 'camera';
+}
 
 export function cameraRecommendations(sceneBox) {
   if (sceneBox.isEmpty()) return [];
@@ -115,13 +124,14 @@ export function analyzeScene(project) {
   const sceneBox = new THREE.Box3();
   const parts = project.parts.map(part => {
     const record = describeObject(part, start, goal);
-    sceneBox.union(new THREE.Box3(new THREE.Vector3(record.bounds.min.x, record.bounds.min.y, record.bounds.min.z), new THREE.Vector3(record.bounds.max.x, record.bounds.max.y, record.bounds.max.z)));
+    unionRecord(sceneBox, record);
     return record;
   });
-  const objects = [
-    ...parts,
-    ...(project.world?.objects || []).map(object => describeObject(object, start, goal)),
-  ];
+  const worldRecords = (project.world?.objects || []).map(object => describeObject(object, start, goal));
+  for (const record of worldRecords) {
+    if (contributesToSceneBounds(record)) unionRecord(sceneBox, record);
+  }
+  const objects = [...parts, ...worldRecords];
 
   const gaps = [];
   for (let i = 0; i < parts.length - 1; i++) {
