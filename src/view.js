@@ -4,6 +4,16 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { RULES } from './model.js';
 
 const palette = { ink: 0x273e39, coral: 0xd87250, teal: 0x408a7f, cream: 0xeee8d8, gold: 0xedb84d, board: 0xdbe3d9 };
+export function captureFramingBox(box) {
+  if (box && !box.isEmpty()) {
+    const { min, max } = box;
+    if ([min.x, min.y, min.z, max.x, max.y, max.z].every(Number.isFinite)) return box;
+  }
+  const fallback = new THREE.Box3();
+  fallback.expandByPoint(new THREE.Vector3(RULES.start.x, RULES.start.y, RULES.start.z));
+  fallback.expandByPoint(new THREE.Vector3(RULES.goal.x, RULES.goal.y, RULES.goal.z));
+  return fallback;
+}
 export class WorkbenchView {
   constructor(host, onSelect) {
     this.host = host; this.onSelect = onSelect; this.meshes = []; this.selectedId = null; this.trailPoints = [];
@@ -265,6 +275,7 @@ export class WorkbenchView {
         if (marble) box.expandByPoint(new THREE.Vector3(marble.x, marble.y, marble.z));
         if (cup) box.expandByPoint(new THREE.Vector3(cup.x, cup.y, cup.z));
       }
+      box = captureFramingBox(box);
       const sphere=box.getBoundingSphere(new THREE.Sphere()),target=sphere.center;
       const direction=new THREE.Vector3(...(options.mode==='top'?[0,1,.001]:options.mode==='side'?[0,0,1]:[1,.8,1])).normalize();
       camera.position.copy(target).addScaledVector(direction,Math.max(6,sphere.radius*3));camera.up.set(0,1,0);camera.lookAt(target);

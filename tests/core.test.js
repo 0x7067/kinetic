@@ -163,4 +163,13 @@ test('skipping Rapier keeps a collider:false marble at its document pose',async(
   assert.equal(run.end.x,RULES.start.x);
   assert.equal(run.end.y,RULES.start.y);
   assert.equal(run.end.z,RULES.start.z);
+  assert.equal(run.closest,null);
+  assert.equal(run.closestTime,null);
+});
+test('Rapier without a cup leaves closest time unmeasured',async()=>{
+  const p=initialProject();
+  const run=await simulate(validateProject({version:1,revision:0,title:'No cup',parts:[],world:{objects:p.world.objects.filter(o=>o.kind!=='cup')}}));
+  assert.equal(run.closest,null);
+  assert.equal(run.closestTime,null);
+  assert.equal(run.closestPoint,null);
 });

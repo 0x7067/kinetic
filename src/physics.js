@@ -106,7 +106,7 @@ export async function simulate(input) {
     return completedRun(project, { message: 'No dynamic body; simulation completed without stepping Rapier.' });
   }
   let inside = false, dwell = 0, elapsed = 0, status = project.judge ? 'timeout' : 'completed', closest = Infinity, maxSpeed = 0, lastTouched = null;
-  let closestPoint = null, closestTime = 0;
+  let closestPoint = null, closestTime = null;
   const start = ball.translation();
   const frames = [{ t: 0, ...point(start), q: [0, 0, 0, 1], vx: 0, vy: 0, vz: 0, speed: 0 }], contacts = [], seen = new Set();
   try {
@@ -152,9 +152,10 @@ export async function simulate(input) {
       : finalStatus === 'success' ? `Marble settled in the cup for ${(project.judge.dwell ?? RULES.dwell).toFixed(1)} s.`
       : finalStatus === 'timeout' ? 'Marble stopped or did not reach the cup within 10 s.'
       : `Marble ${finalStatus === 'fell-short' ? 'touched the workbench before the cup' : finalStatus === 'overshot' ? 'missed the cup' : 'left the workbench'}. Last contact: ${lastTouched || 'none'}.`;
+    const measuredClosest = Number.isFinite(closest) ? round(closest) : null;
     return {
       id: uid(), revision: project.revision, status: finalStatus, success, duration: round(elapsed),
-      closest: Number.isFinite(closest) ? round(closest) : null, closestPoint, closestTime,
+      closest: measuredClosest, closestPoint: measuredClosest == null ? null : closestPoint, closestTime: measuredClosest == null ? null : closestTime,
       maxSpeed: round(maxSpeed), end: last, endDistanceToGoal, missVector, targetError, contacts, message, frames, project,
       createdAt: new Date().toISOString(),
     };

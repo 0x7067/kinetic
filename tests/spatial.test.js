@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { analyzeScene, cameraRecommendations } from '../src/scene-analysis.js';
-import { initialProject } from '../src/model.js';
+import { initialProject, RULES } from '../src/model.js';
 import { rotation } from '../src/physics.js';
+import { captureFramingBox } from '../src/view.js';
 
 test('spatial transforms agree with the physics quaternion for nonzero yaw and pitch',()=>{
   const p=initialProject();p.parts[1].angle=-31;p.parts[1].yaw=19;
@@ -48,4 +49,15 @@ test('lights and cameras do not invent scene bounds by themselves',()=>{
     {id:'shot',kind:'camera',name:'Shot',x:9,y:10,z:13},
   ]};
   const a=analyzeScene(p);assert.equal(a.sceneBounds,null);assert.deepEqual(a.cameraRecommendations,[]);
+});
+test('empty capture framing falls back to a finite start-goal box',()=>{
+  const fallback=captureFramingBox(new THREE.Box3());
+  const sphere=fallback.getBoundingSphere(new THREE.Sphere());
+  assert.equal(fallback.isEmpty(),false);
+  assert.ok(Number.isFinite(sphere.radius));
+  assert.ok(Number.isFinite(sphere.center.x));
+  assert.ok(fallback.containsPoint(new THREE.Vector3(RULES.start.x,RULES.start.y,RULES.start.z)));
+  assert.ok(fallback.containsPoint(new THREE.Vector3(RULES.goal.x,RULES.goal.y,RULES.goal.z)));
+  const kept=new THREE.Box3(new THREE.Vector3(-1,0,-1),new THREE.Vector3(1,2,1));
+  assert.equal(captureFramingBox(kept),kept);
 });
