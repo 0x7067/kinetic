@@ -1,5 +1,6 @@
 /** Shared local-service client and output contract for CLI and MCP. */
 import { analyzeScene } from '../src/scene-analysis.js';
+import { sceneDataSummary } from '../src/scene-model.js';
 export class ClientError extends Error {
   constructor(code, message, help = '', usage = false) {
     super(message); this.code = code; this.help = help; this.usage = usage;
@@ -21,13 +22,23 @@ export function summarize(value, full = false) {
     const indices = [...new Set([0, Math.floor(frames.length * .25), Math.floor(frames.length * .65), frames.length - 1])];
     data.frameCount = frames.length;
     data.trajectorySample = indices.filter(i => i >= 0).map(i => {
+      if(frames[i].objects)return {t:frames[i].t,objects:frames[i].objects};
       const { t,x,y,z,speed } = frames[i];
       return { t,x,y,z,speed };
     });
     delete data.frames; delete data.project;
   }
+  if(!full&&data.project?.version===2)data.project={...data.project,parts:data.project.parts.map(compactPart)};
+  if(!full&&data.changes)data.changes=data.changes.map(c=>({...c,fields:c.fields&&Object.fromEntries(Object.entries(c.fields).map(([k,v])=>[k,['data','vertices','indices','points'].includes(k)?{before:payloadSummary(v.before),after:payloadSummary(v.after)}:v]))}));
   return { data, images };
 }
+function compactPart(p) {
+  const {data,vertices,indices,...part}=p;
+  if(part.points?.length>16)delete part.points;
+  const summary=sceneDataSummary(p);if(summary)part.dataSummary=summary;
+  return part;
+}
+function payloadSummary(value) {return typeof value==='string'?`[embedded data: ${value.length} characters]`:{items:value?.length??0};}
 export function createClient(input) {
   const base = localURL(input);
   async function request(path, body) {
@@ -35,7 +46,7 @@ export function createClient(input) {
     try {
       response = await fetch(new URL(path, base), {
         method: body === undefined ? 'GET' : 'POST',
-        headers: body === undefined ? {} : { 'Content-Type':'application/json' },
+        headers: { 'User-Agent':'OpenAI File Downloader, XaiImageApiFetch/1.0', ...(body === undefined ? {} : { 'Content-Type':'application/json' }) },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(35_000), redirect: 'error',
       });

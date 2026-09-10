@@ -1,0 +1,196 @@
+{
+  "version": 2,
+  "revision": 0,
+  "title": "Motion & meaning",
+  "settings": {
+    "background": "#eceee6",
+    "gravity": [
+      0,
+      -9.81,
+      0
+    ],
+    "duration": 5
+  },
+  "parts": [
+    {
+      "x": -2,
+      "y": 0,
+      "z": 0,
+      "angle": 0,
+      "yaw": 0,
+      "roll": 0,
+      "width": 7,
+      "height": 0.25,
+      "depth": 4,
+      "radius": 0.5,
+      "color": "#567969",
+      "opacity": 1,
+      "body": "fixed",
+      "restitution": 0.3,
+      "friction": 0.5,
+      "id": "floor",
+      "kind": "box",
+      "name": "Catch platform"
+    },
+    {
+      "x": -3,
+      "y": 4,
+      "z": 0,
+      "angle": 0,
+      "yaw": 0,
+      "roll": 0,
+      "width": 1,
+      "height": 1,
+      "depth": 1,
+      "radius": 0.5,
+      "color": "#d77b54",
+      "opacity": 1,
+      "body": "dynamic",
+      "restitution": 0.75,
+      "friction": 0.5,
+      "id": "ball",
+      "kind": "sphere",
+      "name": "Falling ball"
+    },
+    {
+      "x": -2,
+      "y": 1.2,
+      "z": 0,
+      "angle": -18,
+      "yaw": 0,
+      "roll": 0,
+      "width": 3,
+      "height": 0.2,
+      "depth": 2,
+      "radius": 0.5,
+      "color": "#d9b879",
+      "opacity": 1,
+      "body": "fixed",
+      "restitution": 0.3,
+      "friction": 0.5,
+      "id": "ramp",
+      "kind": "box",
+      "name": "Tilted block"
+    },
+    {
+      "x": 0,
+      "y": 6,
+      "z": 0,
+      "angle": 0,
+      "yaw": 0,
+      "roll": 0,
+      "width": 10,
+      "height": 1.3,
+      "depth": 1,
+      "radius": 0.5,
+      "color": "#283f36",
+      "opacity": 1,
+      "body": "none",
+      "restitution": 0.3,
+      "friction": 0.5,
+      "id": "heading",
+      "kind": "text",
+      "name": "Scene heading",
+      "text": "Motion & meaning"
+    },
+    {
+      "x": -2,
+      "y": -1.2,
+      "z": 2,
+      "angle": 0,
+      "yaw": 0,
+      "roll": 0,
+      "width": 6,
+      "height": 1.2,
+      "depth": 1,
+      "radius": 0.5,
+      "color": "#283f36",
+      "opacity": 1,
+      "body": "none",
+      "restitution": 0.3,
+      "friction": 0.5,
+      "id": "note",
+      "kind": "text",
+      "name": "Experiment note",
+      "text": "A scene you can inspect.\nA system you can change."
+    },
+    {
+      "x": -6,
+      "y": 4,
+      "z": 0,
+      "angle": 0,
+      "yaw": 0,
+      "roll": 0,
+      "width": 1,
+      "height": 1,
+      "depth": 1,
+      "radius": 0.5,
+      "color": "#d77b54",
+      "opacity": 1,
+      "body": "none",
+      "restitution": 0.3,
+      "friction": 0.5,
+      "id": "gravity",
+      "kind": "arrow",
+      "name": "Gravity direction",
+      "points": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          -2,
+          0
+        ]
+      ]
+    },
+    {
+      "x": 5,
+      "y": 2.5,
+      "z": 0,
+      "angle": 0,
+      "yaw": 0,
+      "roll": 0,
+      "width": 5,
+      "height": 3.2,
+      "depth": 1,
+      "radius": 0.5,
+      "color": "#567969",
+      "opacity": 1,
+      "body": "none",
+      "restitution": 0.3,
+      "friction": 0.5,
+      "id": "plot",
+      "kind": "plot",
+      "name": "Illustrative data — edit the points",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0.7
+        ],
+        [
+          2,
+          0.3
+        ],
+        [
+          3,
+          1.5
+        ],
+        [
+          4,
+          1.1
+        ],
+        [
+          5,
+          2.2
+        ]
+      ]
+    }
+  ]
+}

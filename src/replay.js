@@ -21,6 +21,7 @@ export function sampleRun(run, time = run.duration) {
   }
   const a = frames[lo], b = frames[Math.min(lo + 1, frames.length - 1)];
   const alpha = b.t > a.t ? Math.max(0, Math.min(1, (time - a.t) / (b.t - a.t))) : 0;
+  if(run.mode==='scene')return {t:time,index:lo,sampleMethod:alpha>0&&alpha<1?'interpolated':'recorded',objects:Object.fromEntries(Object.entries(a.objects).map(([id,p])=>[id,interpolateObject(p,b.objects[id],alpha)]))};
   const position = new Vector3(a.x, a.y, a.z).lerp(new Vector3(b.x, b.y, b.z), alpha);
   const q = new Quaternion().fromArray(a.q).slerp(new Quaternion().fromArray(b.q), alpha).normalize();
   const velocity = new Vector3(a.vx ?? 0, a.vy ?? 0, a.vz ?? 0).lerp(new Vector3(b.vx ?? 0, b.vy ?? 0, b.vz ?? 0), alpha);
@@ -32,26 +33,42 @@ export function sampleRun(run, time = run.duration) {
   };
 }
 
+function interpolateObject(a,b,alpha) {
+  const position=new Vector3(a.x,a.y,a.z).lerp(new Vector3(b.x,b.y,b.z),alpha);
+  const q=new Quaternion().fromArray(a.q).slerp(new Quaternion().fromArray(b.q),alpha).normalize();
+  const v=new Vector3(a.vx,a.vy,a.vz).lerp(new Vector3(b.vx,b.vy,b.vz),alpha);
+  return {x:position.x,y:position.y,z:position.z,q:q.toArray(),vx:v.x,vy:v.y,vz:v.z,speed:v.length()};
+}
+
 export function runSummary(run) {
-  return { id: run.id, revision: run.revision, status: run.status, success: run.success,
+  return { ...(run.mode?{mode:run.mode}:{}), id: run.id, revision: run.revision, status: run.status, success: run.success,
     duration: run.duration, closest: run.closest, end: run.end, contacts: run.contacts,
     frameCount: run.frames.length };
 }
 
 export function compareRuns(baseline, candidate) {
+  if(baseline.mode!==candidate.mode)throw new WorkshopError('INCOMPATIBLE_RUNS','Compare runs from the same workspace mode.');
   const changes = [], before = new Map(baseline.project.parts.map(p => [p.id, p]));
   const after = new Map(candidate.project.parts.map(p => [p.id, p]));
   for (const id of new Set([...before.keys(), ...after.keys()])) {
     const a = before.get(id), b = after.get(id);
     if (!a || !b) { changes.push({ id, type: a ? 'removed' : 'added' }); continue; }
     const fields = {};
-    for (const key of Object.keys(b)) if (a[key] !== b[key]) fields[key] = { before: a[key], after: b[key] };
+    for (const key of Object.keys(b)) if (JSON.stringify(a[key]) !== JSON.stringify(b[key])) fields[key] = { before: a[key], after: b[key] };
     if (Object.keys(fields).length) changes.push({ id, type: 'updated', fields });
   }
   return {
     baseline: runSummary(baseline), candidate: runSummary(candidate), changes,
-    closestDelta: +(candidate.closest - baseline.closest).toFixed(4),
-    durationDelta: +(candidate.duration - baseline.duration).toFixed(4),
-    interpretation: 'Deltas are candidate minus baseline. A smaller miss distance alone is not success; read success/status. Traces align by simulated time, not normalized progress.',
+    ...comparisonMetrics(baseline,candidate),
   };
+}
+
+function projectChanges(before,after) {
+  return Object.fromEntries(['title','settings'].filter(k=>JSON.stringify(before[k])!==JSON.stringify(after[k])).map(k=>[k,{before:before[k],after:after[k]}]));
+}
+
+function comparisonMetrics(baseline,candidate) {
+  const durationDelta=+(candidate.duration-baseline.duration).toFixed(4);
+  if(candidate.mode==='scene')return {projectChanges:projectChanges(baseline.project,candidate.project),closestDelta:null,durationDelta,interpretation:'Scene runs have no success criterion. Recordings align by simulated time; geometry changes do not prove improvement.'};
+  return {closestDelta:+(candidate.closest-baseline.closest).toFixed(4),durationDelta,interpretation:'Deltas are candidate minus baseline. A smaller miss distance alone is not success; read success/status. Traces align by simulated time, not normalized progress.'};
 }

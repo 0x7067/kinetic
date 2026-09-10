@@ -2,6 +2,7 @@
 import json, os, subprocess, tempfile, time, traceback, urllib.request
 from pathlib import Path
 from playwright.sync_api import sync_playwright
+from cli_support import invoke_cli
 
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'evidence'/'replay';OUT.mkdir(parents=True,exist_ok=True)
@@ -11,9 +12,8 @@ def check(name,value=True):
     assert value,name
     report['checks'].append(name);print('PASS:',name,flush=True)
 def cli(*args):
-    result=subprocess.run(['node','cli.js',*args,'--url',BASE,'--json','--capture-dir',str(OUT/'captures')],cwd=ROOT,capture_output=True,text=True,timeout=40)
-    assert result.returncode==0,result.stdout+result.stderr
-    return json.loads(result.stdout)
+    return invoke_cli(ROOT,BASE,OUT/'captures',args)
+
 def wait_server():
     for _ in range(100):
         try:
@@ -27,7 +27,7 @@ def idle(page):
 
 with tempfile.TemporaryDirectory(prefix='kinetic-replay-browser-') as directory:
     log=(OUT/'server.log').open('w')
-    server=subprocess.Popen(['node','server/http.js'],cwd=ROOT,env={**os.environ,'PORT':'4361','KINETIC_DATA':str(Path(directory)/'state.json')},stdout=log,stderr=subprocess.STDOUT)
+    server=subprocess.Popen(['node','server/http.js'],cwd=ROOT,env={**os.environ,'KINETIC_TEMPLATE':'marble','PORT':'4361','KINETIC_DATA':str(Path(directory)/'state.json')},stdout=log,stderr=subprocess.STDOUT)
     try:
         wait_server()
         with sync_playwright() as p:

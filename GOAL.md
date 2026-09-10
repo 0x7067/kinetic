@@ -1,4 +1,45 @@
-# Kinetic continuation checkpoint — agent usability
+# Kinetic — general workshop checkpoint
+
+## Completed increment — 10 September 2026
+
+Implemented the agreed general, agent-accessible workshop on `codex/general-workshop`, starting from the tested agent-usability increment `e94bd21271b1f753464a59f186bc837e44be08cb`. Main remains unchanged. The marble challenge is one preserved example, alongside a blank scene and “Motion & meaning.” The current version is 0.5.0.
+
+Version 2 scenes share Workshop validation, revision checking, atomic batches, history and persistence with existing version 1 saves. Ten object kinds cover primitives, custom triangle meshes, text, lines, arrows, embedded PNGs and supplied-data plots. Physics is optional for boxes/spheres/cylinders, with a fresh 120 Hz Rapier world, real contact pairs and multi-body recordings. Scene completion has no implicit success criterion. Three.js computes world transforms, bounds, axes, explicit top-face normals/downhill vectors and capture geometry. Human editing, CLI and the eight-tool stdio MCP adapter use the same document and facts.
+
+Replay, historical feedback, comparison ghosts and camera-preserving captures work in both modes. Invalid assets fail captures explicitly. Default tool output summarizes embedded assets and long geometry. The standalone HTML retains authoring, optional physics and local browser persistence. README, scene schema/CLI guide, an importable example and the normal CI workflow now cover the general workshop.
+
+Completed checks:
+
+- `npm test`: **87/87 passed**, including actual CLI/SDK scene creation, persistence/export/import, replay parity, optimistic conflicts and box/sphere/plot probe parity.
+- `npm run build`: static and standalone output passed; standalone **6.55 MB**.
+- `tests/browser.py`: **35/35 passed**, plus external stdio MCP **9/9 with five actual PNGs**.
+- `tests/replay-browser.py`: **24/24 passed**.
+- `tests/scene-browser.py`: **21/21 passed**, including desktop/mobile, custom mesh and decoded PNG, MCP images, physics/replay/ghosts, historical feedback, image failure and offline mode. All three browser suites reported zero page exceptions.
+- Final desktop/mobile/offline/comparison screenshots and representative video frames were actually inspected. A short real-browser creation/replay/revision/comparison recording is retained alongside full videos.
+- `actionlint` and `git diff --check` passed. Ripwire reports zero unacknowledged gating regressions after scoped review acknowledgments for sequential CLI churn and eleven added lines in the shared renderer. Eight minor existing-symbol changes and twelve new-symbol findings remain disclosed; this is not a zero-debt claim. Its test obligations were covered by the Node and browser suites. CLI main's signature remains unchanged.
+
+Two fresh evaluators created original scenes from empty services. CLI used two simulations to revise an escaping ball into a five-second contained result; MCP used one simulation to verify a sphere resting on a slab. Both confirmed scene persistence across restart. Follow-up probes exposed a null-normal CLI formatting regression, which was fixed, covered with a live parity test and verified by the evaluator. Full methods, calls, failures and limitations are in `docs/GENERAL-WORKSHOP-EVALUATION.md`.
+
+Evidence:
+
+- Final logs: `evidence/general-final-{node,build,browser,replay,scene-browser}.log`; additional probe checks: `evidence/general-final-probe-tests.log`.
+- PNGs/results/traces/full video: `evidence/general-browser/`, `evidence/replay/`, `evidence/browser-results.json`, `evidence/mcp-results.json`.
+- New scene full desktop recording: `evidence/general-browser/video/d4d2bf4282fce8f73cf8141b1c1604c3.webm`; offline: `evidence/general-browser/offline-video/a1a6e590941c2644ce223abb82c05ba9.webm`.
+- Short demo: `evidence/general-final/kinetic-workshop-demo.mp4`; live CLI captures, demo comparison PNG and original marble backup: `evidence/general-final/`.
+- Evaluator source-free call transcripts, reports, saved scenes and PNGs: `evidence/general-evaluation/`.
+- Quality review: `evidence/general-quality-final.json`, `evidence/general-test-gate.txt`, `.ripwire_quality_acks`.
+- Preserved failures: first scene-browser tab-selection failure in `evidence/general-browser-first-failure/`; outdated help/version test in `evidence/general-node-help-test-failure.log`; probe errors in evaluator transcript and `evidence/general-final/ramp-probe.json`; recording harness CSP failure in `evidence/general-final/demo-recording-csp-failure.log`. The harness uses the same test-only CSP bypass as browser acceptance; the app CSP remains restrictive.
+- Exact committed source revision and source archive are written into ignored `evidence/general-final/` after commit.
+
+The foreground local service at `http://127.0.0.1:4317` runs the changed code and was exercised with actual CLI PNGs and simulation. The original marble project was exported before an undoable switch to the general demo. This is not a hosted deployment or supervised background agent. No push, merge, provider call or scheduled job is claimed.
+
+Current limits: 64 objects, 16 dynamic bodies, 1 MB documents, ten-second simulation, bounded embedded PNGs; custom meshes remain visual, plots show supplied data, and no arbitrary code/forces/joints/imported 3D formats are provided. MCP complete-project export remains CLI/browser-only. Runs and undo history reset on restart. Whole-scene chart labels and long inspectors can still be improved. No Safari/iPhone or hardware-performance certification; no dependency audit remediation is claimed. Next useful work is tighter framing and a more compact inspector, guided by the retained scenes and measured feedback.
+
+---
+
+The following checkpoints describe the earlier marble-specific scope and are historical; the general-workshop contract above supersedes their product boundaries.
+
+# Earlier checkpoint — agent usability
 
 Keep build → run → observe → revise → save small. CLI first; MCP remains a thin adapter. No general game editor or built-in model service.
 

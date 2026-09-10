@@ -6,7 +6,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 let child,dir;const port=4329,base=`http://127.0.0.1:${port}`;
-async function start(){child=spawn(process.execPath,['server/http.js'],{env:{...process.env,PORT:String(port),KINETIC_DATA:join(dir,'state.json')},stdio:['ignore','pipe','pipe']});let logs='';child.stderr.on('data',b=>logs+=b);for(let i=0;i<60;i++){try{const r=await fetch(`${base}/api/state`);if(r.ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}throw new Error(`Server failed to start: ${logs}`);}
+async function start(){child=spawn(process.execPath,['server/http.js'],{env:{...process.env,KINETIC_TEMPLATE:'marble',PORT:String(port),KINETIC_DATA:join(dir,'state.json')},stdio:['ignore','pipe','pipe']});let logs='';child.stderr.on('data',b=>logs+=b);for(let i=0;i<60;i++){try{const r=await fetch(`${base}/api/state`);if(r.ok)return;}catch{}await new Promise(r=>setTimeout(r,100));}throw new Error(`Server failed to start: ${logs}`);}
 async function stop(){if(child&&!child.killed){const done=new Promise(r=>child.on('exit',r));child.kill('SIGTERM');await done;}}
 async function post(path,body,headers={}){const r=await fetch(`${base}/api/${path}`,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(body)});return {status:r.status,data:await r.json()};}
 before(async()=>{dir=await mkdtemp(join(tmpdir(),'kinetic-test-'));await start();});after(stop);

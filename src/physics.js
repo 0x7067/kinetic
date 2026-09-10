@@ -1,5 +1,6 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { RULES, validateProject, uid } from './model.js';
+import { simulateScene } from './scene-physics.js';
 let initialized;
 export async function ready() { initialized ??= RAPIER.init(); await initialized; }
 export function rotation(part) {
@@ -20,6 +21,7 @@ function contactNormal(world, collider, marble) {
 export async function simulate(input) {
   await ready();
   const project = validateProject(input);
+  if(project.version===2)return simulateScene(project,RAPIER);
   const world = new RAPIER.World({ x: 0, y: RULES.gravity, z: 0 });
   const queue = new RAPIER.EventQueue(true);
   world.timestep = RULES.timestep;

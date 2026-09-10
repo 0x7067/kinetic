@@ -1,5 +1,8 @@
 /** @typedef {{id:string,kind:'ramp'|'platform'|'barrier',name:string,x:number,y:number,z:number,angle:number,yaw:number,length:number}} Part */
 /** @typedef {{version:1,revision:number,title:string,parts:Part[]}} Project */
+import { WorkshopError } from './errors.js';
+import { initialScene, validateScene, applySceneOperations, SCENE_RULES } from './scene-model.js';
+export { WorkshopError } from './errors.js';
 export const RULES = Object.freeze({
   gravity: -9.81, timestep: 1 / 120, duration: 10, radius: 0.22,
   start: Object.freeze({ x: -5.5, y: 4.65, z: 0 }),
@@ -13,9 +16,6 @@ export function uid() {
   return [...b].map((v,i)=>([4,6,8,10].includes(i)?'-':'')+v.toString(16).padStart(2,'0')).join('');
 }
 export const clone = value => structuredClone(value);
-export class WorkshopError extends Error {
-  constructor(code, message, status = 400) { super(message); this.name = 'WorkshopError'; this.code = code; this.status = status; }
-}
 export function initialProject() {
   return { version: 1, revision: 0, title: 'The first leap', parts: [
     { id: 'launch', kind: 'ramp', name: 'Launch ramp', x: -4, y: 3.45, z: 0, angle: -18, yaw: 0, length: 4.4 },
@@ -38,6 +38,7 @@ export function validatePart(part) {
   return clone(part);
 }
 export function validateProject(input) {
+  if (input?.version === 2) return validateScene(input);
   if (!input || input.version !== 1 || !Array.isArray(input.parts)) throw new WorkshopError('INVALID_PROJECT', 'Expected a Kinetic version 1 project.');
   const allowed = ['version','revision','title','parts'];
   if (Object.keys(input).some(k => !allowed.includes(k))) throw new WorkshopError('LOCKED_RULES', 'Challenge rules, spawn, target and gravity cannot be imported or edited.');
@@ -48,8 +49,16 @@ export function validateProject(input) {
   if (new Set(parts.map(p => p.id)).size !== parts.length) throw new WorkshopError('DUPLICATE_ID', 'Every part needs a unique ID.');
   return { version: 1, revision: input.revision, title: input.title, parts };
 }
+function switchWorkspace(project,op) {
+  if(Object.keys(op).some(k=>!['type','template'].includes(k))||!['scene','demo','marble'].includes(op.template))throw new WorkshopError('INVALID_TEMPLATE','Choose scene, demo or marble.');
+  return {...(op.template==='marble'?initialProject():initialScene(op.template)),revision:project.revision};
+}
 export function applyOperations(project, operations) {
   if (!Array.isArray(operations) || !operations.length || operations.length > 20) throw new WorkshopError('INVALID_BATCH', 'Submit 1–20 typed operations.');
+  if (operations.length === 1 && operations[0]?.type === 'workspace') return switchWorkspace(project,operations[0]);
+  return project.version===2?applySceneOperations(project,operations):applyMarbleOperations(project,operations);
+}
+function applyMarbleOperations(project,operations) {
   const draft = clone(project);
   for (const op of operations) {
     if (!op || typeof op !== 'object') throw new WorkshopError('INVALID_OPERATION', 'Each operation must be an object.');
@@ -90,7 +99,7 @@ export class Workshop {
     }
     this.check(expectedRevision);
     const next = applyOperations(this.project, operations);
-    const changed = JSON.stringify(next.parts) !== JSON.stringify(this.project.parts);
+    const changed = JSON.stringify(next) !== JSON.stringify(this.project);
     if (changed) this.commit(next);
     const result = { revision: this.project.revision, changed, project: clone(this.project) };
     if (requestId) { this.requests.set(requestId, { fingerprint, result }); if (this.requests.size > 200) this.requests.delete(this.requests.keys().next().value); }
@@ -128,7 +137,7 @@ export class Workshop {
     this.feedback.push(note); return clone(note);
   }
   state() {
-    return { project: clone(this.project), rules: RULES, attempts: clone(this.attempts), feedback: clone(this.feedback), canUndo: !!this.history.length, canRedo: !!this.future.length };
+    return { project: clone(this.project), rules: this.project.version===2?SCENE_RULES:RULES, attempts: clone(this.attempts), feedback: clone(this.feedback), canUndo: !!this.history.length, canRedo: !!this.future.length };
   }
   addRun(run) {
     this.lastRun = run;

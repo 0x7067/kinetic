@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, statSyn
 import { resolve, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Workshop, WorkshopError, initialProject, validateProject } from '../src/model.js';
+import { initialScene } from '../src/scene-model.js';
 import { simulate, ready } from '../src/physics.js';
 import { sampleRun, compareRuns, runSummary } from '../src/replay.js';
 
@@ -12,7 +13,7 @@ if(!Number.isSafeInteger(port)||port<1||port>65535)throw new Error('PORT must be
 mkdirSync(dirname(dataPath),{recursive:true});
 let workshop;
 try { const saved=JSON.parse(readFileSync(dataPath,'utf8'));workshop=new Workshop(saved); workshop.feedback=Array.isArray(saved.feedback)?saved.feedback.slice(0,30):[]; }
-catch(error){if(existsSync(dataPath)){console.error('Saved project could not be loaded. Original file preserved:',dataPath);throw error;}workshop=new Workshop();}
+catch(error){if(existsSync(dataPath)){console.error('Saved project could not be loaded. Original file preserved:',dataPath);throw error;}workshop=new Workshop({project:process.env.KINETIC_TEMPLATE==='marble'?initialProject():initialScene()});}
 const persist=()=>{const temp=`${dataPath}.tmp`;writeFileSync(temp,JSON.stringify({project:workshop.project,feedback:workshop.feedback}),{mode:0o600});renameSync(temp,dataPath);};
 const clients=new Set(),runs=new Map(),captures=new Map();let busy=false;
 function publish(type,data){const msg=`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;for(const res of clients)res.write(msg);}
@@ -33,7 +34,7 @@ async function capture(project, run, view = {}, time) {
   const id=crypto.randomUUID(),expectedCount=run&&time===undefined?3:1;
   return new Promise(resolve=>{
     const timer=setTimeout(()=>{captures.delete(id);resolve({images:[],captureStatus:'timeout',imageStatus:'Browser capture timed out. No visual success is claimed; the structured physics result remains valid.'});},25000);
-    captures.set(id,{revision:project.revision,expectedCount,finish:(images,metadata)=>{clearTimeout(timer);captures.delete(id);resolve({images,captureStatus:'captured',captureMetadata:metadata,imageStatus:'Captured from the connected browser.'});}});
+    captures.set(id,{revision:project.revision,expectedCount,finish:(images,metadata,error)=>{clearTimeout(timer);captures.delete(id);resolve(error?{images:[],captureStatus:'failed',imageStatus:error}:{images,captureStatus:'captured',captureMetadata:metadata,imageStatus:'Captured from the connected browser.'});}});
     // A snapshot, not the current mutable document. Images always describe this revision.
     publish('capture',{id,revision:project.revision,project:structuredClone(project),run:run||null,view,...(time===undefined?{}:{time})});
   });
@@ -46,7 +47,7 @@ const staticPaths={
   '/vendor/addons/controls/OrbitControls.js':'node_modules/three/examples/jsm/controls/OrbitControls.js',
   '/vendor/addons/geometries/RoundedBoxGeometry.js':'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js',
 };
-for(const file of ['app.js','model.js','physics.js','solver.js','view.js','style.css','replay.js','replay-player.js'])staticPaths[`/src/${file}`]=`src/${file}`;
+for(const file of ['app.js','model.js','physics.js','solver.js','view.js','style.css','replay.js','replay-player.js','errors.js','scene-model.js','scene-geometry.js','scene-view.js','scene-physics.js','scene-ui.js'])staticPaths[`/src/${file}`]=`src/${file}`;
 const server=http.createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
   res.setHeader('Cross-Origin-Resource-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');
@@ -72,6 +73,7 @@ const server=http.createServer(async(req,res)=>{
         const pending=captures.get(path.slice(13));
         if(!pending)return json(res,{accepted:false});
         if(body.revision!==pending.revision)return json(res,{accepted:false,reason:'stale capture'});
+        if(typeof body.error==='string'&&body.error.length<=500){pending.finish([],[],body.error);return json(res,{accepted:true});}
         if(!Array.isArray(body.images)||body.images.length!==pending.expectedCount||body.images.some(s=>typeof s!=='string'||s.length>1_500_000||!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(s)))throw new WorkshopError('INVALID_IMAGES','Expected exactly the requested number of bounded PNG screenshots.');
         if(!Array.isArray(body.metadata)||body.metadata.length!==pending.expectedCount||JSON.stringify(body.metadata).length>12000)throw new WorkshopError('INVALID_METADATA','Include one bounded metadata record per screenshot.');
         pending.finish(body.images,body.metadata);return json(res,{accepted:true});
@@ -109,7 +111,7 @@ const server=http.createServer(async(req,res)=>{
       if(path==='/api/edit'){const result=workshop.edit(body);changed();return json(res,result);}
       if(path==='/api/undo'){const result=workshop.undo(body.expectedRevision);changed();return json(res,result);}
       if(path==='/api/redo'){const result=workshop.redo(body.expectedRevision);changed();return json(res,result);}
-      if(path==='/api/reset'){workshop.check(body.expectedRevision);workshop.commit(initialProject());changed();return json(res,workshop.state());}
+      if(path==='/api/reset'){workshop.check(body.expectedRevision);workshop.commit(workshop.project.version===2?initialScene():initialProject());changed();return json(res,workshop.state());}
       if(path==='/api/import'){workshop.check(body.expectedRevision);workshop.commit(validateProject(body.project));changed();return json(res,workshop.state());}
       if(path==='/api/run'){
         workshop.check(body.expectedRevision);busy=true;let run;

@@ -1,14 +1,14 @@
 # Kinetic development contract
 
-Keep creation → actual simulation → evidence → revision → persistence small and reliable. Do not add a general game engine, provider SDK, chat facade, or multi-agent orchestrator.
+Kinetic is a general, agent-accessible visual workshop: create → inspect → render → revise → save, with simulation when the scene needs physics. Start with 3D scenes and useful 2D elements in the same workspace. The marble challenge is a sample project; do not treat its object catalog, part budget, or success criterion as limits on the whole product. Keep the shared loop small and reliable without adding a gameplay engine, provider SDK, chat facade, or multi-agent orchestrator.
 
-The primary agent interface is the CLI. Preserve the shell-native loop `help → inspect → run → probe → set → run`. Keep default output compact; do not dump full trajectories or base64 screenshots unless explicitly requested. MCP is a thin adapter over the same project/physics/spatial facts, not a separate implementation.
+The primary agent interface is the CLI. Preserve discovery, revision-safe creation and edits, structured inspection, rendering, optional simulation, and persistence through CLI and MCP. Keep default output compact; do not dump full trajectories, mesh arrays, or embedded image bytes unless explicitly requested. MCP is a thin adapter over the same project/physics/spatial facts, not a separate implementation.
 
 Use Three.js for world-space reasoning as well as rendering. Structured inspection should derive transforms, bounds, endpoints, normals, downhill vectors, gap deltas and useful camera poses from Three.js math instead of asking an agent to infer geometry from screenshots. Visual captures remain complementary evidence.
 
-Run `npm test`, `npm run build`, and `python tests/browser.py`. Also exercise the CLI and external stdio MCP client against a live local service. Inspect actual desktop/mobile screenshots, not only exit codes. Preserve failing evidence while diagnosing. Never relabel missing screenshots or incomplete tests as success.
+Run `npm test`, `npm run build`, `python tests/browser.py`, `python tests/replay-browser.py`, and `python tests/scene-browser.py`. Also exercise the CLI and external stdio MCP client against a live local service. Inspect actual desktop/mobile screenshots, not only exit codes. Preserve failing evidence while diagnosing. Never relabel missing screenshots or incomplete tests as success.
 
-All part edits go through Workshop validation/history. Fixed challenge rules are not project data. A run uses a fresh Rapier world, fixed timestep, real contacts, and dwell-based success. The renderer replays recorded results; it cannot decide that the simulation succeeded. Auto-tune is local search and must be labeled accordingly, never as an AI model.
+All object, scene-setting, and workspace changes go through Workshop validation/history. Preserve version 1 marble saves and their fixed challenge rules. Version 2 scenes have optional physics and configurable scene settings; completed scene simulations have no implicit success criterion. Simulations use a fresh Rapier world, fixed timestep, and real contacts. Marble success still requires cup dwell. The renderer replays recorded results; it cannot decide that a challenge succeeded. Auto-tune belongs to the marble example and must be labeled as local search, never an AI model.
 
 Keep HTTP loopback-only with Host/Origin validation. No arbitrary code tools. Bound operations, feedback size, runs, history, and solver retries. Do not let a stale agent overwrite a newer human edit. Preserve persistent IDs through save/import/undo. A feedback resolution is not human approval.
 

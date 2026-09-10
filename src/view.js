@@ -2,8 +2,16 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RULES } from './model.js';
+import { createSceneObject } from './scene-geometry.js';
+import { buildSceneObjects, applyObjectFrames, frameCamera } from './scene-view.js';
 
 const palette = { ink: 0x273e39, coral: 0xd87250, teal: 0x408a7f, cream: 0xeee8d8, gold: 0xedb84d, board: 0xdbe3d9 };
+function captureBounds(partsGroup,project,focus) {
+  if(focus){const target=partsGroup.children.find(m=>m.userData.partId===focus);if(!target)throw new Error('Unknown capture focus: '+focus);return new THREE.Box3().setFromObject(target);}
+  const box=new THREE.Box3().setFromObject(partsGroup);
+  if(project.version===1){box.expandByPoint(new THREE.Vector3(RULES.start.x,RULES.start.y,RULES.start.z));box.expandByPoint(new THREE.Vector3(RULES.goal.x,RULES.goal.y,RULES.goal.z));}
+  if(box.isEmpty())box.setFromCenterAndSize(new THREE.Vector3(),new THREE.Vector3(8,8,8));return box;
+}
 export class WorkbenchView {
   constructor(host, onSelect) {
     this.host = host; this.onSelect = onSelect; this.meshes = []; this.selectedId = null; this.trailPoints = [];
@@ -25,6 +33,7 @@ export class WorkbenchView {
     const rim = new THREE.DirectionalLight(0xf3ffff, 1.5); rim.position.set(8, 6, -8); this.scene.add(rim);
     this.staticGroup = new THREE.Group(); this.partsGroup = new THREE.Group(); this.scene.add(this.staticGroup, this.partsGroup);
     this.buildTable(); this.buildCup();
+    this.grid=new THREE.GridHelper(20,20,0xa3b29f,0xd1dacb);this.grid.visible=false;this.scene.add(this.grid);
     this.marble = new THREE.Mesh(new THREE.SphereGeometry(RULES.radius, 40, 24), new THREE.MeshPhysicalMaterial({ color: palette.coral, roughness: 0.2, metalness: 0.18, clearcoat: 1, clearcoatRoughness: 0.12 }));
     this.marble.castShadow = true; this.scene.add(this.marble);
     const band = new THREE.Mesh(new THREE.TorusGeometry(RULES.radius * 0.98, 0.019, 8, 40), new THREE.MeshStandardMaterial({ color: 0xffe5c8, roughness: 0.35 }));
@@ -104,13 +113,20 @@ export class WorkbenchView {
     this.goalHalo.rotation.x=-Math.PI/2;this.goalHalo.position.set(x,-0.027,0);g.add(this.goalHalo);
   }
   setProject(project) {
-    const signature = JSON.stringify(project.parts);
+    const modeChanged=this.currentProject?.version!==project.version;
+    const signature = JSON.stringify([project.version,project.parts,project.settings]);
     this.currentProject = structuredClone(project);
     if (signature === this.projectSignature) return;
     this.projectSignature = signature;
+    const general=project.version===2;
+    this.staticGroup.visible=!general;this.marble.visible=!general;this.grid.visible=general;
+    this.scene.background.set(general?project.settings.background:0xeceee6);
     this.clearGroup(this.diagnostics);
-    for (const child of [...this.partsGroup.children]) { child.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});this.partsGroup.remove(child); }
+    for(const child of this.partsGroup.children)child.userData.disposed=true;
+    this.clearGroup(this.partsGroup);
     this.meshes=[];
+    this.assetsReady=Promise.resolve([]);
+    if(general){Object.assign(this,buildSceneObjects(this.partsGroup,this.diagnostics,project));this.select(this.selectedId);if(modeChanged)this.setCamera('iso');return;}
     project.parts.forEach((p,i)=>{
       const group=new THREE.Group();group.position.set(p.x,p.y,p.z);group.rotation.order='YXZ';group.rotation.y=p.yaw*Math.PI/180;group.rotation.z=p.angle*Math.PI/180;group.userData.partId=p.id;
       const color=i===0?palette.coral:i===1?palette.cream:palette.teal;
@@ -140,6 +156,11 @@ export class WorkbenchView {
       this.diagnostics.add(new THREE.ArrowHelper(normal, centre, .95, palette.teal, .18, .10));
       const axes = new THREE.AxesHelper(.45); axes.position.copy(centre); this.diagnostics.add(axes);
     }
+    if(modeChanged)this.setCamera('iso');
+  }
+  async waitForAssets() {
+    const errors=await this.assetsReady;
+    if(errors?.length)throw new Error('An embedded image could not be decoded. Replace its PNG data before capturing.');
   }
   clearGroup(group) {
     const geometries = new Set(), materials = new Set();
@@ -152,9 +173,11 @@ export class WorkbenchView {
 
   select(id) { this.selectedId=id;const g=this.meshes.find(m=>m.userData.partId===id);this.selection.visible=!!g;if(g){g.updateMatrixWorld(true);this.selection.box.setFromObject(g).expandByScalar(0.06);} }
   resize() { const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;this.renderer.setSize(w,h);const span=Math.max(6.8,9.8*h/w);this.camera.top=span;this.camera.bottom=-span;this.camera.left=-span*w/h;this.camera.right=span*w/h;this.camera.updateProjectionMatrix(); }
-  reset() { this.marble.position.set(RULES.start.x,RULES.start.y,RULES.start.z);this.marble.quaternion.identity();this.setTrail([]); this.velocityArrow.visible=false; }
-  setFrame(frame) { if(!frame)return;this.marble.position.set(frame.x,frame.y,frame.z);this.marble.quaternion.fromArray(frame.q); }
+  reset() { if(this.currentProject?.version===2){for(const p of this.currentProject.parts){const g=this.meshes.find(g=>g.userData.partId===p.id);g.position.set(p.x,p.y,p.z);g.rotation.set(...[p.roll,p.yaw,p.angle].map(THREE.MathUtils.degToRad),'YXZ');}this.select(this.selectedId);}this.marble.position.set(RULES.start.x,RULES.start.y,RULES.start.z);this.marble.quaternion.identity();this.setTrail([]); this.velocityArrow.visible=false; }
+  setFrame(frame) { if(!frame)return;if(frame.objects){applyObjectFrames(this.meshes,frame);this.select(this.selectedId);return;}this.marble.position.set(frame.x,frame.y,frame.z);this.marble.quaternion.fromArray(frame.q); }
+
   setTrail(frames) {
+    if(this.currentProject?.version===2)frames=[];
     this.trailFrames = frames;
     const count=Math.min(frames.length,1024), positions=this.trailGeometry.getAttribute('position'), colors=this.trailGeometry.getAttribute('color');
     const slow=new THREE.Color(palette.teal), fast=new THREE.Color(palette.coral), color=new THREE.Color();
@@ -162,6 +185,7 @@ export class WorkbenchView {
     positions.needsUpdate=true; colors.needsUpdate=true; this.trailGeometry.setDrawRange(0,count);
   }
   setMotion(frame) {
+    if(frame.objects){this.velocityArrow.visible=false;return;}
     const velocity = new THREE.Vector3(frame.vx || 0, frame.vy || 0, frame.vz || 0);
     const speed = velocity.length(); this.velocityArrow.visible = speed > .04;
     if (speed > .04) {
@@ -175,6 +199,10 @@ export class WorkbenchView {
     this.clearGroup(this.comparison); this.comparisonRun = run; this.ghostMarble = null;
     this.comparison.visible = !!run;
     if (!run) return;
+    if(run.mode==='scene'){
+      for(const p of run.project.parts){const group=createSceneObject({...p,color:'#6275b5',opacity:.25});group.traverse(o=>{if(o.isMesh)o.material.wireframe=true;});this.comparison.add(group);}
+      return;
+    }
     const geometry = new THREE.BufferGeometry().setFromPoints(run.frames.map(f=>new THREE.Vector3(f.x,f.y,f.z)));
     const trail = new THREE.Line(geometry, new THREE.LineDashedMaterial({color:0x5c6faf,transparent:true,opacity:.65,dashSize:.12,gapSize:.09,depthWrite:false}));
     trail.computeLineDistances(); this.comparison.add(trail);
@@ -188,28 +216,19 @@ export class WorkbenchView {
     }
   }
   setComparisonFrame(frame) {
+    if(frame.objects){applyObjectFrames(this.comparison.children,frame);return;}
     if(this.ghostMarble){this.ghostMarble.position.set(frame.x,frame.y,frame.z);this.ghostMarble.quaternion.fromArray(frame.q);}
   }
-  setCamera(mode) { this.camera.zoom=1;this.camera.position.set(...(mode==='top'?[0,18,0.01]:mode==='side'?[0,4,19]:[9,10,13]));this.controls.target.set(0,1.5,0);this.camera.lookAt(this.controls.target);this.camera.updateProjectionMatrix();this.controls.update(); }
+  setCamera(mode) { this.camera.zoom=1;this.camera.position.set(...(mode==='top'?[0,18,0.01]:mode==='side'?[0,4,19]:[9,10,13]));this.controls.target.set(0,1.5,0);if(this.currentProject?.version===2){this.controls.target.copy(frameCamera(this.camera,captureBounds(this.partsGroup,this.currentProject),mode));this.controls.minZoom=.03;}this.camera.lookAt(this.controls.target);this.camera.updateProjectionMatrix();this.controls.update(); }
   cameraState() { return { position:this.camera.position.toArray(),target:this.controls.target.toArray(),zoom:this.camera.zoom }; }
   restoreCamera(value) { if(!value)return;this.camera.position.fromArray(value.position);this.controls.target.fromArray(value.target);this.camera.zoom=value.zoom||1;this.camera.updateProjectionMatrix();this.controls.update(); }
   capture(options = {}) {
     const renderer=this.renderer, originalSize=renderer.getSize(new THREE.Vector2()), pixelRatio=renderer.getPixelRatio();
     const selected=this.selection.visible, diagnostics=this.diagnostics.visible, comparison=this.comparison.visible, motion=this.velocityArrow.visible;
     const camera=this.camera.clone();
-    const aspect=originalSize.x/Math.max(1,originalSize.y);
     const scale=Math.min(1,960/originalSize.x,720/originalSize.y);
     const width=Math.max(1,Math.round(originalSize.x*scale)),height=Math.max(1,Math.round(originalSize.y*scale));
-    if(options.mode || options.focus) {
-      let box;
-      if(options.focus){const object=this.meshes.find(m=>m.userData.partId===options.focus);if(!object)throw new Error('Unknown capture focus: '+options.focus);box=new THREE.Box3().setFromObject(object);}
-      else {box=new THREE.Box3().setFromObject(this.partsGroup);box.expandByPoint(new THREE.Vector3(RULES.start.x,RULES.start.y,RULES.start.z));box.expandByPoint(new THREE.Vector3(RULES.goal.x,RULES.goal.y,RULES.goal.z));}
-      const sphere=box.getBoundingSphere(new THREE.Sphere()),target=sphere.center;
-      const direction=new THREE.Vector3(...(options.mode==='top'?[0,1,.001]:options.mode==='side'?[0,0,1]:[1,.8,1])).normalize();
-      camera.position.copy(target).addScaledVector(direction,Math.max(6,sphere.radius*3));camera.up.set(0,1,0);camera.lookAt(target);
-      const span=Math.max(.9,sphere.radius*1.22)*Math.max(1,1/aspect);
-      camera.left=-span*aspect;camera.right=span*aspect;camera.top=span;camera.bottom=-span;camera.zoom=1;
-    }
+    if(options.mode || options.focus)frameCamera(camera,captureBounds(this.partsGroup,this.currentProject,options.focus),options.mode);
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     try {
       this.selection.visible=false;this.diagnostics.visible=!!options.overlays;this.comparison.visible=false;this.velocityArrow.visible=motion&&!!options.overlays;

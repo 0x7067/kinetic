@@ -1,9 +1,9 @@
 {
-  "name": "kinetic-marble-workshop",
-  "version": "0.4.0",
+  "name": "kinetic-workshop",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
-  "description": "A small, real-physics marble workshop for people and agents.",
+  "description": "An agent-accessible 3D workshop with annotations, data plots and optional real physics.",
   "bin": {
     "kinetic": "./cli.js"
   },
@@ -16,7 +16,8 @@
     "test:mcp": "node tests/mcp-smoke.js",
     "build": "node scripts/build.js",
     "verify": "npm test && npm run build",
-    "test:replay": "python tests/replay-browser.py"
+    "test:replay": "python tests/replay-browser.py",
+    "test:scene": "python tests/scene-browser.py"
   },
   "engines": {
     "node": ">=22"

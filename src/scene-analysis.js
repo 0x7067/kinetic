@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RULES } from './model.js';
+import { sceneBounds } from './scene-geometry.js';
 
 const round = n => Math.round(n * 1000) / 1000;
 const vec = v => ({ x: round(v.x), y: round(v.y), z: round(v.z) });
@@ -65,6 +66,7 @@ export function cameraRecommendations(sceneBox) {
  * as the Three.js workbench instead of asking a model to infer them from screenshots.
  */
 export function analyzeScene(project) {
+  if(project.version===2){const {bounds,parts}=sceneBounds(project);return {coordinateSystem:'Y-up, metres; angle=Z, yaw=Y, roll=X in degrees; 2D elements occupy local XY',parts,gaps:[],sceneBounds:bounds.isEmpty()?null:boxRecord(bounds),cameraRecommendations:cameraRecommendations(bounds),mode:'scene'};}
   const goal = new THREE.Vector3(RULES.goal.x, RULES.goal.y, RULES.goal.z);
   const start = new THREE.Vector3(RULES.start.x, RULES.start.y, RULES.start.z);
   const sceneBox = new THREE.Box3();

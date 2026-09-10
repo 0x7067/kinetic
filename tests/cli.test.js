@@ -1,3 +1,4 @@
+import {runCLI} from './cli-helper.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -9,15 +10,7 @@ const ROOT = resolve(import.meta.dirname, '..');
 const PORT = 4347;
 const URL = `http://127.0.0.1:${PORT}`;
 
-function cli(...args) {
-  const result = spawnSync(process.execPath, ['cli.js', ...args, '--url', URL, '--json'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-    timeout: 25000,
-  });
-  assert.equal(result.status, 0, result.stderr || result.stdout);
-  return JSON.parse(result.stdout);
-}
+const cli=(...args)=>runCLI(URL,args);
 async function waitForServer() {
   for (let i = 0; i < 100; i++) {
     try { const r = await fetch(`${URL}/api/state`); if (r.ok) return; } catch {}
@@ -30,7 +23,7 @@ test('CLI exposes a complete inspect -> run -> edit -> run -> undo loop', async 
   const folder = mkdtempSync(join(tmpdir(), 'kinetic-cli-'));
   const server = spawn(process.execPath, ['server/http.js'], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(PORT), KINETIC_DATA: join(folder, 'project.json') },
+    env: { ...process.env, KINETIC_TEMPLATE:'marble', PORT: String(PORT), KINETIC_DATA: join(folder, 'project.json') },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   t.after(() => { server.kill('SIGTERM'); rmSync(folder, { recursive: true, force: true }); });
@@ -85,7 +78,7 @@ test('CLI exposes a complete inspect -> run -> edit -> run -> undo loop', async 
       cwd: ROOT, encoding: 'utf8', env: { ...process.env, KINETIC_URL: 'http://127.0.0.1:1' },
     });
     assert.equal(help.status, 0, help.stdout + help.stderr);
-    const operations = JSON.parse(help.stdout.match(/```json\n([\s\S]*?)\n```/)[1]);
+    const operations = JSON.parse(help.stdout.split('MARBLE EXAMPLE:')[1].match(/```json\n([\s\S]*?)\n```/)[1]);
     const file = join(folder, 'operations.json');
     writeFileSync(file, JSON.stringify(operations));
     const edited = cli('batch', file, '--revision', String(restored.project.revision));
@@ -119,7 +112,7 @@ test('CLI help is useful without a running server and global flags can precede c
 
   const version = spawnSync(process.execPath, ['cli.js', '--json', 'version'], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(version.status, 0);
-  assert.match(version.stdout, /0\.4\.0/);
+  assert.match(version.stdout, /0\.5\.0/);
 });
 
 for (const argv of [

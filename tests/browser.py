@@ -37,7 +37,7 @@ def wait_for_server():
 with tempfile.TemporaryDirectory(prefix='kinetic-browser-') as folder:
     log = (OUT / 'browser-server.log').open('w')
     process = subprocess.Popen(['node', 'server/http.js'], cwd=ROOT,
-        env={**os.environ, 'PORT': str(PORT), 'KINETIC_DATA': str(Path(folder) / 'project.json')},
+        env={**os.environ, 'KINETIC_TEMPLATE': 'marble', 'PORT': str(PORT), 'KINETIC_DATA': str(Path(folder) / 'project.json')},
         stdout=log, stderr=subprocess.STDOUT)
     browser = None
     try:
@@ -191,6 +191,8 @@ with tempfile.TemporaryDirectory(prefix='kinetic-browser-') as folder:
                 standalone.goto((ROOT / 'dist/kinetic-standalone.html').as_uri(), wait_until='domcontentloaded')
                 standalone.wait_for_function("document.body.dataset.ready === 'true'", timeout=45000)
                 check('Single-file build initializes directly from a file URL', 'Browser-only' in standalone.locator('#connection').inner_text())
+                standalone.locator('#marble-example').click()
+                standalone.wait_for_function("window.kinetic.getState().project.version === 1")
                 standalone.locator('#solve').click()
                 standalone.wait_for_function("!document.querySelector('#run').disabled && window.kinetic.getState().attempts.some(r=>r.success)", timeout=45000)
                 check('Single-file build runs real physics and solves without a server')

@@ -12,7 +12,7 @@ async function state(){return fetch(url+'/api/state').then(r=>r.json());}
 function cli(...args){const r=spawnSync(process.execPath,['cli.js',...args,'--json','--url',url],{encoding:'utf8',timeout:30000});return {status:r.status,value:JSON.parse(r.stdout)};}
 before(async()=>{
  folder=await mkdtemp(join(tmpdir(),'kinetic-replay-api-'));
- process_=spawn(process.execPath,['server/http.js'],{env:{...process.env,PORT:String(port),KINETIC_DATA:join(folder,'state.json')},stdio:'ignore'});
+ process_=spawn(process.execPath,['server/http.js'],{env:{...process.env,KINETIC_TEMPLATE:'marble',PORT:String(port),KINETIC_DATA:join(folder,'state.json')},stdio:'ignore'});
  for(let i=0;i<100;i++){try{await state();return;}catch{}await new Promise(r=>setTimeout(r,50));}throw new Error('server did not start');
 });
 after(async()=>{const exit=new Promise(r=>process_.once('exit',r));process_.kill();await exit;await rm(folder,{recursive:true,force:true});});
