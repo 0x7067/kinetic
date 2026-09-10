@@ -65,24 +65,30 @@ export class WorkbenchView {
     m.rotation.x=-Math.PI/2;m.position.set(x,y,z);parent.add(m);
   }
   buildTable() {
-    const g=this.staticGroup;
-    this.box(g,16,0.48,8.4,palette.board,0,-0.3,0,0.18);
-    this.box(g,15.7,0.22,8.1,0xb9c6b9,0,-0.61,0,0.1);
-    for(const x of [-6.9,6.9])for(const z of [-3.2,3.2])this.cylinder(g,0.3,0.25,palette.ink,x,-0.82,z);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200),this.material(0xeceee6));floor.rotation.x=-Math.PI/2;floor.position.y=-0.97;floor.receiveShadow=true;g.add(floor);
-    const points=[]; for(let x=-7;x<=7;x+=0.5)for(let z=-3.5;z<=3.5;z+=0.5)points.push(x,-0.045,z);
+    const workbench = this.worldObject('workbench');
+    const kit = new THREE.Group();
+    // Same translation as Rapier cuboid(8, 0.2, 4.4). Authored decoration sits around table-top y=0;
+    // local Y is shifted by the cuboid half-height so the kit origin is the collider center.
+    kit.position.set(workbench.x, workbench.y, workbench.z);
+    this.staticGroup.add(kit);
+    const g = kit, y = n => n + 0.2;
+    this.box(g,16,0.48,8.4,palette.board,0,y(-0.3),0,0.18);
+    this.box(g,15.7,0.22,8.1,0xb9c6b9,0,y(-0.61),0,0.1);
+    for(const x of [-6.9,6.9])for(const z of [-3.2,3.2])this.cylinder(g,0.3,0.25,palette.ink,x,y(-0.82),z);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200),this.material(0xeceee6));floor.rotation.x=-Math.PI/2;floor.position.y=y(-0.97);floor.receiveShadow=true;g.add(floor);
+    const points=[]; for(let x=-7;x<=7;x+=0.5)for(let z=-3.5;z<=3.5;z+=0.5)points.push(x,y(-0.045),z);
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
     g.add(new THREE.Points(geo,new THREE.PointsMaterial({color:0x879e8c,size:0.018,transparent:true,opacity:0.62})));
     for(const x of [-7.3,7.3])for(const z of [-3.5,3.5]){
-      this.cylinder(g,0.09,0.015,0x9aa993,x,-0.04,z);
-      this.box(g,0.09,0.013,0.016,0x647c6a,x,-0.026,z,0.002);
+      this.cylinder(g,0.09,0.015,0x9aa993,x,y(-0.04),z);
+      this.box(g,0.09,0.013,0.016,0x647c6a,x,y(-0.026),z,0.002);
     }
-    this.text(g,'K I N E T I C   /   F I E L D   L A B',-3,-0.025,3.32,4.5);
-    this.text(g,'001   •   EARTH GRAVITY',4.6,-0.025,3.32,3);
-    for(let i=0;i<15;i++)this.box(g,0.015,0.007,i%5===0?0.18:0.08,0x8fa08f,-7+i,-0.03,-3.5,0.002);
+    this.text(g,'K I N E T I C   /   F I E L D   L A B',-3,y(-0.025),3.32,4.5);
+    this.text(g,'001   •   EARTH GRAVITY',4.6,y(-0.025),3.32,3);
+    for(let i=0;i<15;i++)this.box(g,0.015,0.007,i%5===0?0.18:0.08,0x8fa08f,-7+i,y(-0.03),-3.5,0.002);
     // A small start marker is a visual guide only; the marble is released from rest.
     const start=this.worldObject('marble') || RULES.start;
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.018,8,40),this.material(palette.coral));ring.rotation.x=Math.PI/2;ring.position.set(start.x,start.y+0.12,start.z);g.add(ring);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.018,8,40),this.material(palette.coral));ring.rotation.x=Math.PI/2;ring.position.set(start.x,start.y+0.12,start.z);this.staticGroup.add(ring);
   }
   buildCup() {
     // cup.x/cup.z are honored. cup.y is unsupported this slice; visual Y stays at the fixture constants.
