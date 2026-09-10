@@ -121,21 +121,25 @@ async function solve(){
   try{
     bestProject=clone(state.project);bestRun=await runOnce('Baseline · unchanged layout');ownRevision=bestRun.revision;
     await play(bestRun,2.5);
-    let move=0;
-    for(let attempt=0;attempt<12&&!bestRun.success&&!stopSolver;attempt++){
-      if(state.project.revision!==ownRevision)throw new Error('Another editor changed the project. Tuning stopped without overwriting their work.');
-      const suggestion=propose(bestProject,bestRun,move++);if(!suggestion)continue;
-      const draft=clone(bestProject);for(const op of suggestion.operations)Object.assign(draft.parts.find(p=>p.id===op.id),op.changes);
-      const applied=await edit(restoreOperations(state.project,draft));ownRevision=applied.revision;
-      $('#solver-note').textContent=`Attempt ${attempt+1}/12 · ${suggestion.label}`;
-      const candidate=await runOnce(suggestion.label);await play(candidate,2.5);
-      if(score(candidate)>score(bestRun)){bestRun=candidate;bestProject=clone(candidate.project);move=0;}
-      await sleep(180);
+    if(bestRun.success===null){
+      toast('No judge; auto-tune skipped.');outcome('No judge; auto-tune skipped.');
+    }else{
+      let move=0;
+      for(let attempt=0;attempt<12&&bestRun.success===false&&!stopSolver;attempt++){
+        if(state.project.revision!==ownRevision)throw new Error('Another editor changed the project. Tuning stopped without overwriting their work.');
+        const suggestion=propose(bestProject,bestRun,move++);if(!suggestion)continue;
+        const draft=clone(bestProject);for(const op of suggestion.operations)Object.assign(draft.parts.find(p=>p.id===op.id),op.changes);
+        const applied=await edit(restoreOperations(state.project,draft));ownRevision=applied.revision;
+        $('#solver-note').textContent=`Attempt ${attempt+1}/12 · ${suggestion.label}`;
+        const candidate=await runOnce(suggestion.label);await play(candidate,2.5);
+        if(score(candidate)>score(bestRun)){bestRun=candidate;bestProject=clone(candidate.project);move=0;}
+        await sleep(180);
+      }
+      if(state.project.revision===ownRevision&&JSON.stringify(state.project.parts)!==JSON.stringify(bestProject.parts)){await edit(restoreOperations(state.project,bestProject));view.setProject(state.project);view.reset();}
+      if(stopSolver){toast('Tuning stopped. Best measured layout retained.');outcome('Tuning stopped. Best measured layout retained.');}
+      else if(bestRun.success){toast('Solved by local search. The target and gravity never changed.');outcome('✓ Better by one small change. Your marble made it.',true);}
+      else toast('Search budget reached. Best measured layout retained; no success claimed.');
     }
-    if(state.project.revision===ownRevision&&JSON.stringify(state.project.parts)!==JSON.stringify(bestProject.parts)){await edit(restoreOperations(state.project,bestProject));view.setProject(state.project);view.reset();}
-    if(stopSolver){toast('Tuning stopped. Best measured layout retained.');outcome('Tuning stopped. Best measured layout retained.');}
-    else if(bestRun.success){toast('Solved by local search. The target and gravity never changed.');outcome('✓ Better by one small change. Your marble made it.',true);}
-    else toast('Search budget reached. Best measured layout retained; no success claimed.');
   }catch(error){toast(error.message);}
   finally{busy=false;solving=false;$('#solver-note').textContent='Auto-tune uses local search. No model or API key.';render();}
 }

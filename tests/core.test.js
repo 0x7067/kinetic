@@ -66,9 +66,18 @@ test('an empty scene cannot claim success just because a simulation completed',a
 });
 test('local search proposes from observations and solves within the explicit budget',async()=>{
   let p=initialProject(),best=await simulate(p),count=1;const log=[{status:best.status,closest:best.closest}];
-  for(let i=0;i<12&&!best.success;i++){const move=propose(p,best,i);if(!move)continue;const next=applyOperations(p,move.operations),r=await simulate(next);count++;log.push({label:move.label,status:r.status,closest:r.closest});if(score(r)>score(best)){p=next;best=r;}}
+  for(let i=0;i<12&&best.success===false;i++){const move=propose(p,best,i);if(!move)continue;const next=applyOperations(p,move.operations),r=await simulate(next);count++;log.push({label:move.label,status:r.status,closest:r.closest});if(score(r)>score(best)){p=next;best=r;}}
   assert.equal(best.success,true,JSON.stringify(log));assert.ok(count<=13);assert.equal(p.parts.length,3);
   console.log('Measured solver evidence:',JSON.stringify({count,log}));
+});
+test('unjudged runs do not invite local search',async()=>{
+  const judgedMiss=score({success:false,closest:6.9,duration:2});
+  const solved=score({success:true,duration:4});
+  const two=validateProject(JSON.parse(readFileSync(resolve(import.meta.dirname,'../examples/two-boxes.json'),'utf8')));
+  const run=await simulate(two);
+  assert.equal(run.success,null);
+  assert.ok(score(run)<judgedMiss);
+  assert.ok(solved>judgedMiss);
 });
 test('world and judge are project data, not LOCKED_RULES',()=>{
   const p=initialProject();

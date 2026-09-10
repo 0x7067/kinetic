@@ -97,8 +97,10 @@ export class WorkbenchView {
     this.text(g,'001   •   EARTH GRAVITY',4.6,y(-0.025),3.32,3);
     for(let i=0;i<15;i++)this.box(g,0.015,0.007,i%5===0?0.18:0.08,0x8fa08f,-7+i,y(-0.03),-3.5,0.002);
     // A small start marker is a visual guide only; the marble is released from rest.
-    const start=this.worldObject('marble') || RULES.start;
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.018,8,40),this.material(palette.coral));ring.rotation.x=Math.PI/2;ring.position.set(start.x,start.y+0.12,start.z);this.staticGroup.add(ring);
+    const start=this.worldObject('marble');
+    if(start){
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.018,8,40),this.material(palette.coral));ring.rotation.x=Math.PI/2;ring.position.set(start.x,start.y+0.12,start.z);this.staticGroup.add(ring);
+    }
   }
   buildCup() {
     // cup.x/cup.z are honored. cup.y is unsupported this slice; visual Y stays at the fixture constants.
