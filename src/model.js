@@ -40,6 +40,10 @@ export function worldObjectCollides(object) {
   if (object.kind === 'light' || object.kind === 'camera') return false;
   return object.collider !== false;
 }
+export function documentPose(project, kind) {
+  const object = (project.world?.objects || []).find(o => o.kind === kind);
+  return object ? { x: object.x, y: object.y, z: object.z } : null;
+}
 export function hasDynamicBody(project) {
   return (project.world?.objects || []).some(o => o.kind === 'marble' && worldObjectCollides(o));
 }
@@ -218,7 +222,17 @@ export class Workshop {
     this.feedback.push(note); return clone(note);
   }
   state() {
-    return { project: clone(this.project), rules: RULES, budget: BUDGET, attempts: clone(this.attempts), feedback: clone(this.feedback), canUndo: !!this.history.length, canRedo: !!this.future.length };
+    return {
+      project: clone(this.project),
+      start: documentPose(this.project, 'marble'),
+      goal: documentPose(this.project, 'cup'),
+      rules: RULES,
+      budget: BUDGET,
+      attempts: clone(this.attempts),
+      feedback: clone(this.feedback),
+      canUndo: !!this.history.length,
+      canRedo: !!this.future.length,
+    };
   }
   addRun(run) {
     this.lastRun = run;

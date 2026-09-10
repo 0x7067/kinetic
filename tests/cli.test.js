@@ -105,6 +105,8 @@ test('CLI import/set/save/run a non-marble two-boxes project', async t => {
   assert.equal(imported.project.judge, undefined);
   const inspect = runCli('inspect');
   assert.equal(inspect.analysis.start, null);
+  assert.equal(inspect.start, null);
+  assert.equal(inspect.goal, null);
   assert.equal(inspect.analysis.objects.length, 4);
   const probed = runCli('probe', 'box-b');
   assert.equal(probed.part.id, 'box-b');

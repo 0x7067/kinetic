@@ -83,6 +83,19 @@ test('world and judge are project data, not LOCKED_RULES',()=>{
   assert.ok(hydrated.world.objects.some(o=>o.kind==='cup'));
   assert.equal(hydrated.judge.type,'dwell-sensor');
 });
+test('workshop state exposes document marble and cup poses',()=>{
+  const w=new Workshop();
+  const s=w.state();
+  const marble=s.project.world.objects.find(o=>o.kind==='marble');
+  const cup=s.project.world.objects.find(o=>o.kind==='cup');
+  assert.deepEqual(s.start,{x:marble.x,y:marble.y,z:marble.z});
+  assert.deepEqual(s.goal,{x:cup.x,y:cup.y,z:cup.z});
+  assert.equal(s.rules.duration,RULES.duration);
+  assert.equal(s.rules.dwell,RULES.dwell);
+  const empty=new Workshop({project:validateProject({version:1,revision:0,title:'No marble',parts:[],world:{objects:[]}})});
+  assert.equal(empty.state().start,null);
+  assert.equal(empty.state().goal,null);
+});
 test('two-boxes inspects, edits, and runs without inventing a marble or cup',async()=>{
   const two=validateProject(JSON.parse(readFileSync(resolve(import.meta.dirname,'../examples/two-boxes.json'),'utf8')));
   assert.equal(two.parts.length,2);

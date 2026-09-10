@@ -51,7 +51,7 @@ function render(){
   $('#feedback-target').textContent=p?`Selected: ${p.name} · revision ${displayed.revision}`:`General note · revision ${displayed.revision}`;
   $('#notes').innerHTML=notes.map(n=>`<article class="note"><small>${escape(n.targetId||'Scene')} · revision ${n.revision}${n.time!=null?' · '+n.time.toFixed(2)+' s':''}</small><p>${escape(n.text)}</p>${n.screenshot?`<img src="${n.screenshot}" alt="Saved view for this feedback"/>`:''}<button data-resolve="${escape(n.id)}">Mark addressed ✓</button></article>`).join('');
   $('#attempt-count').textContent=`${state.attempts.length} ${state.attempts.length===1?'run':'runs'}`;
-  if(state.attempts.length)$('#attempts').innerHTML=state.attempts.map((r,i)=>`<button class="attempt-card ${r.success?'success':''}" data-run="${escape(r.id)}" aria-label="Replay run ${state.attempts.length-i}: ${r.success===true?'Success':r.status}"><span class="attempt-number">${String(state.attempts.length-i).padStart(2,'0')}</span><span class="attempt-body"><strong>${r.success===true?'In the cup.':r.success===null?'Completed.':r.status==='fell-short'?'A little short.':r.status==='timeout'?'Not quite moving.':'Missed the landing.'}</strong><small>${r.duration.toFixed(2)} s · ${r.success===true?'0.4 s settled':r.closest==null?'no goal distance':`${r.closest.toFixed(2)} m closest`}</small><em>${r.label?escape(r.label):`Revision ${r.revision} · measured physics`}</em></span><span class="attempt-play">▷</span></button>`).join('');
+  if(state.attempts.length)$('#attempts').innerHTML=state.attempts.map((r,i)=>`<button class="attempt-card ${r.success?'success':''}" data-run="${escape(r.id)}" aria-label="Replay run ${state.attempts.length-i}: ${r.success===true?'Success':r.status}"><span class="attempt-number">${String(state.attempts.length-i).padStart(2,'0')}</span><span class="attempt-body"><strong>${r.success===true?'In the cup.':r.success===null?'Completed.':r.status==='fell-short'?'A little short.':r.status==='timeout'?'Not quite moving.':'Missed the landing.'}</strong><small>${r.duration.toFixed(2)} s · ${r.success===true?'0.4 s settled':r.closest==null?'unmeasured':`${r.closest.toFixed(2)} m closest`}</small><em>${r.label?escape(r.label):`Revision ${r.revision} · measured physics`}</em></span><span class="attempt-play">▷</span></button>`).join('');
   if(view&&!busy&&!player?.run){view.setProject(state.project);view.select(selected);}
   updateControls();
   updateReplay();
@@ -177,7 +177,7 @@ async function init(){
   $('#connection').classList.toggle('off',!remote);
   view=new WorkbenchView($('#viewport'),id=>{selected=id;render();view.select(id);});view.setProject(state.project);view.select(selected);
   player=new ReplayPlayer({onFrame:showReplayFrame,onChange:updateReplay,onEnd:run=>{
-    outcome(run.success===true?'✓ A little momentum. A perfect landing.':run.success===null?`↗ ${run.status}.`:`↗ ${run.status}. ${run.closest==null?'No goal distance.':`${run.closest.toFixed(2)} m closest to the cup.`}`,run.success===true);
+    outcome(run.success===true?'✓ A little momentum. A perfect landing.':run.success===null?`↗ ${run.status}.`:`↗ ${run.status}. ${run.closest==null?'Distance unmeasured.':`${run.closest.toFixed(2)} m closest to the cup.`}`,run.success===true);
     if(run.success)successSound();
   }});
   $('#loading').remove();render();
