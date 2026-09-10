@@ -1,6 +1,16 @@
-# Kinetic continuation checkpoint — v0.4.0 Replay Lab
+# Kinetic continuation checkpoint — document-owned scene
 
-Keep build → run → observe → revise → save small. CLI first; MCP remains a thin adapter. No general game editor or built-in model service.
+Keep build → run → observe → revise → save small. CLI first; MCP remains a thin adapter. Primitives plus an optional judge; marble-to-cup is one composition, not a built-in game engine.
+
+## Document-owned scene — kin-scene-first-1
+
+Projects may carry optional `world` and `judge`. Parts may set `collider`. `maxParts: 3` is no longer a World-type rule; the engine budget is 12 parts and 16 world objects. Current version-1 ramp JSON still validates: missing `world` hydrates the marble-cup composition so existing layouts keep their dwell-sensor.
+
+Rapier runs only when a dynamic body is in the document. Workbench, cup and marble are created only from that document. A missing judge yields `success: null` and `status: 'completed'`. `examples/two-boxes.json` is two meshes, one light and one camera with no marble, cup or judge.
+
+Local verification of this slice: `npm test` — 72 Node tests passed, including marble fail-then-succeed after `bridge.y=2.25`, two-boxes inspect/edit/save/run with `success: null`, collider opt-in, and `run_js` still rejected. `npm run build` produced the static/offline bundle. Browser and live MCP suites were not re-run in this environment.
+
+Out of scope for this slice: GLTF, animation, kits/kit-shell, new MCP tool names, auto-tune rewrite, a Three.js editor suite, unbounded scene graphs, and code-in-sim. Typed operations only; `run_js` still fails. Single-body replay frames are unchanged for the marble composition.
 
 ## Standalone extraction — 9 September 2026
 
@@ -37,6 +47,6 @@ The implementer had source knowledge. This is not a fresh-agent trial, a fair CL
 
 ## Next useful experiment and boundaries
 
-Have a fresh evaluator solve held-out perturbed layouts using only CLI help or MCP discovery under identical attempt budgets. Do not add a framework or bigger parts catalog before this demonstrates useful feedback.
+Have a fresh evaluator solve held-out perturbed layouts using only CLI help or MCP discovery under identical attempt budgets. Do not add GLTF, animation, kits, or unconstrained JS before that feedback is useful.
 
-One fixed challenge, three parts, one dynamic marble; loopback-only service. Project/feedback persist; the twenty-run replay cache and undo history remain in memory and reset on service restart. A note marked addressed is not human approval. Auto-tune is bounded local search, not an LLM. Software-WebGL Chromium acceptance is not Safari/iPhone or hardware-performance certification. No public deployment, paid model call or unattended agent is scheduled.
+Primitives plus optional judge; marble-to-cup remains the default composition. Loopback-only service. Project/feedback persist; the twenty-run replay cache and undo history remain in memory and reset on service restart. A note marked addressed is not human approval. Auto-tune is bounded local search, not an LLM. Software-WebGL Chromium acceptance is not Safari/iPhone or hardware-performance certification. No public deployment, paid model call or unattended agent is scheduled.

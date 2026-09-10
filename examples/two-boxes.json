@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "revision": 0,
+  "title": "Two boxes",
+  "parts": [
+    {"id":"box-a","kind":"mesh","name":"Red box","x":-1.2,"y":1.4,"z":0,"angle":0,"yaw":0,"length":1.4,"collider":true},
+    {"id":"box-b","kind":"mesh","name":"Ghost box","x":1.5,"y":1.6,"z":0,"angle":0,"yaw":12,"length":1.2,"collider":false}
+  ],
+  "world": {
+    "objects": [
+      {"id":"key-light","kind":"light","name":"Key light","x":-5,"y":12,"z":5,"intensity":4.5},
+      {"id":"camera","kind":"camera","name":"Shot","x":9,"y":10,"z":13}
+    ]
+  }
+}

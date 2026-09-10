@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createClient, ClientError, summarize } from './server/client.js';
-import { LIMITS } from './src/model.js';
+import { LIMITS, projectStuff, BUDGET } from './src/model.js';
 
 const VERSION = '0.4.0';
 const raw = process.argv.slice(2);
@@ -45,15 +45,15 @@ ${Object.values(usage).join('\n')}
 
 Replay and compare read recorded evidence without new simulations. Replay time is in simulated seconds.
 
-Metres, Y-up; pitch (angle) and yaw are DEGREES. Three-part budget.
-Gravity, spawn, cup and success rules are locked. All mutations are undoable.
+Metres, Y-up; pitch (angle) and yaw are DEGREES. Bounded primitives; optional judge.
+Marble-to-cup is one composition. All mutations are undoable.
 --revision uses the revision you inspected, not an automatically refreshed one.
 --request-id makes the same batch retry-safe in this running service session.
 Images need an open browser tab; physics runs without it. No built-in LLM.
 
 Globals: --json, --full, --url <loopback HTTP origin>, --capture-dir <directory>
 Run any command with --help for its concise contract. Errors: exit 1; usage: exit 2.
-A completed physics attempt exits 0 even when the marble misses: read success/status.`;
+A completed physics attempt exits 0 even when a judge reports a miss: read success/status.`;
 
 function usageError(message, command = 'help') {
   throw new ClientError('INVALID_ARGUMENT', message, usage[command] || 'kinetic --help', true);
@@ -111,8 +111,12 @@ function changes(tokens) {
     const key=token.slice(0,at),value=token.slice(at+1);
     if (Object.hasOwn(result,key)) usageError(`Repeated field ${key}.`,'set');
     if (key==='name') { if(!value.trim()||value.length>60)usageError('Name must contain 1–60 characters.','set'); result[key]=value; }
+    else if (key==='collider') {
+      if(value!=='true'&&value!=='false')usageError('collider must be true or false.','set');
+      result[key]=value==='true';
+    }
     else {
-      if(!Object.hasOwn(LIMITS,key))usageError(`Editable fields: name, ${Object.keys(LIMITS).join(', ')}.`,'set');
+      if(!Object.hasOwn(LIMITS,key))usageError(`Editable fields: name, collider, ${Object.keys(LIMITS).join(', ')}.`,'set');
       const [min,max]=LIMITS[key],n=Number(value);
       if(!value.trim()||!Number.isFinite(n)||n<min||n>max)usageError(`${key} must be between ${min} and ${max}.`,'set');
       result[key]=n;
@@ -127,12 +131,16 @@ function readJSON(file) {
 const n=(value,d=2)=>Number(value).toFixed(d);
 const xyz=p=>`(${n(p.x)}, ${n(p.y)}, ${n(p.z)})`;
 function inspectText(s) {
+  const stuff = projectStuff(s.project);
+  const start = s.analysis?.start, goal = s.analysis?.goal;
   return [
-    `revision ${s.project.revision} | ${s.project.parts.length}/${s.rules.maxParts} parts | undo ${s.canUndo?'yes':'no'} | redo ${s.canRedo?'yes':'no'}`,
-    `start ${xyz(s.rules.start)} -> cup ${xyz(s.rules.goal)} | metres; angle/yaw in degrees`,
-    ...s.project.parts.map(p=>`${p.id} [${p.kind}] ${xyz(p)} pitch=${p.angle}° yaw=${p.yaw}° length=${p.length}m`),
+    `revision ${s.project.revision} | ${stuff.length} objects | ${s.project.parts.length}/${BUDGET.maxParts} parts | undo ${s.canUndo?'yes':'no'} | redo ${s.canRedo?'yes':'no'}`,
+    start && goal ? `start ${xyz(start)} -> cup ${xyz(goal)} | metres; angle/yaw in degrees` : 'metres; angle/yaw in degrees',
+    ...stuff.map(p=>p.length!=null && p.kind!=='light' && p.kind!=='camera'
+      ? `${p.id} [${p.kind}] ${xyz(p)} pitch=${p.angle}° yaw=${p.yaw}° length=${p.length}m${p.collider===false?' collider=false':''}`
+      : `${p.id} [${p.kind}] ${xyz(p)}`),
     ...s.analysis.gaps.map(g=>`gap ${g.from}->${g.to}: horizontal=${n(g.horizontalDistance)}m vertical=${n(g.verticalDelta)}m (deck endpoints, not clearance)`),
-    s.attempts[0]?`last-run ${s.attempts[0].id}: ${s.attempts[0].status} @ revision ${s.attempts[0].revision}; closest ${n(s.attempts[0].closest)}m to cup centre`:'last-run none',
+    s.attempts[0]?`last-run ${s.attempts[0].id}: ${s.attempts[0].status} @ revision ${s.attempts[0].revision}${s.attempts[0].closest==null?'':`; closest ${n(s.attempts[0].closest)}m to cup centre`}`:'last-run none',
     `feedback ${s.feedback.filter(x=>!x.resolved).length} pending`,
     'next: kinetic run; kinetic probe <id>; kinetic view side --focus <id>',
   ].join('\n');
@@ -164,7 +172,8 @@ async function main() {
     text=`baseline ${value.baseline.id} r${value.baseline.revision}: ${value.baseline.status}\ncandidate ${value.candidate.id} r${value.candidate.revision}: ${value.candidate.status}\nclosest delta ${n(value.closestDelta,4)}m; duration delta ${n(value.durationDelta,4)}s\n`+value.changes.map(c=>`${c.id}: ${c.type} ${Object.entries(c.fields||{}).map(([k,v])=>`${k} ${v.before} -> ${v.after}`).join(', ')}`).join('\n')+'\n'+value.interpretation;
   } else if(command==='run') {
     value=await client.run({...(o.revision===undefined?{}:{expectedRevision:Number(o.revision)}),capture:!!o.capture,...(o.capture?{view}:{})});
-    text=`${value.success?'SUCCESS':'FAIL'} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\nclosest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}\ncontacts ${value.contacts.map(c=>`${c.part}${c.surface?'/'+c.surface:''}@${n(c.time)}s${c.velocity?` vx=${n(c.velocity.x)}m/s`:''}`).join(', ')}\n${value.message}\nnext: ${value.success?'kinetic save working-project.json':'kinetic probe <last-part>; kinetic view side --focus <last-part>'}`;
+    const outcome=value.success===true?'SUCCESS':value.success===null?'COMPLETED':'FAIL';
+    text=`${outcome} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\n${value.closest==null?'no judge':`closest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}`}\ncontacts ${value.contacts.map(c=>`${c.part}${c.surface?'/'+c.surface:''}@${n(c.time)}s${c.velocity?` vx=${n(c.velocity.x)}m/s`:''}`).join(', ')||'none'}\n${value.message}\nnext: ${value.success===true?'kinetic save working-project.json':'kinetic probe <id>; kinetic view side --focus <id>'}`;
   } else if(command==='view') { value=await client.view({...view,mode:a[0]||'iso'});text=`view ${a[0]||'iso'} | focus ${o.focus||'scene'} | overlays ${o.overlays?'on':'off'}`; }
   else if(command==='set'||command==='batch') {
     const requestId=o['request-id']||crypto.randomUUID();
@@ -181,8 +190,8 @@ async function main() {
   } else if(command==='import') {
     value=await client.request('/api/import',{expectedRevision:Number(o.revision),project:readJSON(a[0])});text=`imported | revision ${value.project.revision}`;
   } else if(command==='doctor') {
-    const s=await client.request('/api/state');value={reachable:true,fixedGravity:s.rules.gravity===-9.81,stableIds:new Set(s.project.parts.map(p=>p.id)).size===s.project.parts.length,partsWithinBudget:s.project.parts.length<=s.rules.maxParts,revision:s.project.revision};
-    text=`ok ${client.base.origin} | revision ${s.project.revision} | ${s.project.parts.length}/${s.rules.maxParts} parts`;
+    const s=await client.request('/api/state');value={reachable:true,fixedGravity:s.rules.gravity===-9.81,stableIds:new Set(s.project.parts.map(p=>p.id)).size===s.project.parts.length,partsWithinBudget:s.project.parts.length<=BUDGET.maxParts,revision:s.project.revision};
+    text=`ok ${client.base.origin} | revision ${s.project.revision} | ${s.project.parts.length}/${BUDGET.maxParts} parts`;
     if(!value.fixedGravity||!value.stableIds||!value.partsWithinBudget)throw new ClientError('INVARIANT_FAILED','The running workshop violates its declared constraints.');
   } else if(command==='feedback') {
     const action=a[0]||'list';value=await client.feedback(action==='resolve'?a.slice(1):undefined);

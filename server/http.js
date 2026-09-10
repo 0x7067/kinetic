@@ -2,7 +2,7 @@ import http from 'node:http';
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { resolve, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Workshop, WorkshopError, initialProject, validateProject } from '../src/model.js';
+import { Workshop, WorkshopError, initialProject, validateProject, projectStuff } from '../src/model.js';
 import { simulate, ready } from '../src/physics.js';
 import { sampleRun, compareRuns, runSummary } from '../src/replay.js';
 
@@ -23,7 +23,7 @@ function validateView(view = {}, project = workshop.project) {
   if (!view || typeof view !== 'object' || Array.isArray(view) || Object.keys(view).some(k=>!['mode','focus','overlays'].includes(k))) throw new WorkshopError('INVALID_VIEW','View accepts mode, focus and overlays only.');
   if (view.mode !== undefined && !['iso','side','top'].includes(view.mode)) throw new WorkshopError('INVALID_VIEW','View mode must be iso, side or top.');
   if (view.overlays !== undefined && typeof view.overlays !== 'boolean') throw new WorkshopError('INVALID_VIEW','overlays must be boolean.');
-  if (view.focus !== undefined && (typeof view.focus !== 'string' || !project.parts.some(p=>p.id===view.focus))) throw new WorkshopError('NOT_FOUND','Capture focus must name an existing part.',404);
+  if (view.focus !== undefined && (typeof view.focus !== 'string' || !projectStuff(project).some(p=>p.id===view.focus))) throw new WorkshopError('NOT_FOUND','Capture focus must name an existing part.',404);
   return view;
 }
 async function capture(project, run, view = {}, time) {
@@ -46,7 +46,7 @@ const staticPaths={
   '/vendor/addons/controls/OrbitControls.js':'node_modules/three/examples/jsm/controls/OrbitControls.js',
   '/vendor/addons/geometries/RoundedBoxGeometry.js':'node_modules/three/examples/jsm/geometries/RoundedBoxGeometry.js',
 };
-for(const file of ['app.js','model.js','physics.js','solver.js','view.js','style.css','replay.js','replay-player.js'])staticPaths[`/src/${file}`]=`src/${file}`;
+for(const file of ['app.js','model.js','physics.js','solver.js','view.js','style.css','replay.js','replay-player.js','compositions/marble-cup.js'])staticPaths[`/src/${file}`]=`src/${file}`;
 const server=http.createServer(async(req,res)=>{
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
   res.setHeader('Cross-Origin-Resource-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');

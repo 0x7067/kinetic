@@ -1,6 +1,6 @@
 # Kinetic — Ideas in motion
 
-A small marble workshop for people and agents. Three.js renders the workbench; Rapier runs the actual physics. The core loop is build → run → inspect → revise → save. No model, provider key, or game-engine framework is built in.
+A small physics workshop for people and agents. Three.js renders the scene; Rapier runs actual physics when a document asks for it. The core loop is build → run → inspect → revise → save. Marble-to-cup is one composition. No model, provider key, or game-engine framework is built in.
 
 ## Open the workshop
 
@@ -65,7 +65,7 @@ Eight tools share the same operations: `kinetic_inspect`, `kinetic_probe`, `kine
 
 ## Rules and persistence
 
-Y is up, distances are metres, and authoring angles are degrees. One marble, at most three parts, fixed gravity/start/cup. Every attempt creates a fresh 120 Hz physics world, for at most ten simulated seconds. Success requires low-speed residence in the cup's physical sensor region for 0.4 seconds; hitting the workbench fails. Decorative supports are not colliders. Auto-tune is bounded local search, explicitly not an LLM.
+Y is up, distances are metres, and authoring angles are degrees. The engine is bounded primitives plus an optional judge. Marble-to-cup is the default composition: one dynamic marble, workbench, cup, and a dwell-sensor. Without a judge, a completed run reports `success: null`. Rapier is skipped when nothing is dynamic. Decorative supports are not colliders. Auto-tune is bounded local search, explicitly not an LLM. See `examples/two-boxes.json` for a non-marble document.
 
 The service atomically saves project and feedback to `.kinetic/workshop.json`; set `KINETIC_DATA` to choose another location. The twenty-run replay cache and twenty-entry undo history are in memory and reset on service restart. Browser-only mode uses localStorage for project/feedback where available. **Save project** exports the editable layout, not recordings or feedback.
 

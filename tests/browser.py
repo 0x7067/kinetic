@@ -70,7 +70,7 @@ with tempfile.TemporaryDirectory(prefix='kinetic-browser-') as folder:
                 page.wait_for_function("document.body.dataset.ready === 'true'", timeout=30000)
                 page.wait_for_timeout(900)
                 check('Workshop initializes real WebGL2', page.evaluate("!!window.kinetic.view.renderer.getContext().getParameter(0x1F02)"))
-                check('Three editable parts with fixed start and target', page.locator('.part').count() == 3)
+                check('Three editable parts with fixed start and target', page.evaluate('window.kinetic.getState().project.parts.length') == 3 and page.evaluate('window.kinetic.getState().project.world.objects.some(o => o.kind === "marble")'))
                 initial = page.evaluate('window.kinetic.getState()')
                 page.screenshot(path=str(OUT / 'desktop-initial.png'), full_page=True)
                 page.locator('#viewport').screenshot(path=str(OUT / 'workbench.png'))

@@ -1,4 +1,4 @@
-import { Workshop, initialProject, clone, validateProject, uid } from './model.js';
+import { Workshop, initialProject, clone, validateProject, uid, projectStuff, isAuthorable } from './model.js';
 import { simulate } from './physics.js';
 import { propose, score, restoreOperations } from './solver.js';
 import { WorkbenchView } from './view.js';
@@ -37,20 +37,21 @@ function partIcon(index){return `<svg viewBox="0 0 30 30" aria-hidden="true"><pa
 function render(){
   if(!state)return;
   const displayed=player?.run?.project||state.project;
-  if(!displayed.parts.some(p=>p.id===selected))selected=displayed.parts[0]?.id||null;
-  $('#parts').innerHTML=displayed.parts.map((p,i)=>`<button class="part ${p.id===selected?'active':''}" data-part="${escape(p.id)}" aria-pressed="${p.id===selected}"><span class="part-icon">${partIcon(i)}</span><span class="part-name">${escape(p.name)}<small>${escape(p.kind)} · ${p.length.toFixed(1)} m</small></span><span>0${i+1}</span></button>`).join('');
-  $('#build-tab span').textContent=String(displayed.parts.length).padStart(2,'0');
-  const p=displayed.parts.find(p=>p.id===selected);
-  $('#inspector').innerHTML=p?`<div class="inspector">${[
+  const stuff=projectStuff(displayed);
+  if(!stuff.some(p=>p.id===selected))selected=stuff[0]?.id||null;
+  $('#parts').innerHTML=stuff.map((p,i)=>`<button class="part ${p.id===selected?'active':''}" data-part="${escape(p.id)}" aria-pressed="${p.id===selected}"><span class="part-icon">${partIcon(i)}</span><span class="part-name">${escape(p.name)}<small>${escape(p.kind)}${p.length!=null?` · ${p.length.toFixed(1)} m`:''}</small></span><span>${String(i+1).padStart(2,'0')}</span></button>`).join('');
+  $('#build-tab span').textContent=String(stuff.length).padStart(2,'0');
+  const p=stuff.find(p=>p.id===selected);
+  $('#inspector').innerHTML=p&&isAuthorable(p)?`<div class="inspector">${[
     ['y','Height',0.7,4.2,0.05,'m'],['angle','Pitch',-45,45,1,'°'],['x','Position',-6.4,6.4,0.05,'m'],['length','Length',1,4.8,0.1,'m'],
-  ].map(([field,label,min,max,step,unit])=>`<div class="control"><label for="control-${field}">${label}</label><output id="value-${field}">${p[field].toFixed(field==='angle'?0:2)} ${unit}</output><input id="control-${field}" type="range" data-field="${field}" data-unit="${unit}" min="${min}" max="${max}" step="${step}" value="${p[field]}" aria-label="${label} of ${escape(p.name)}" ${busy?'disabled':''}/></div>`).join('')}<div class="inspector-note">One change can make all the difference.</div></div>`:'<p class="muted">No parts in this project. An agent can add one, or start fresh.</p>';
+  ].map(([field,label,min,max,step,unit])=>`<div class="control"><label for="control-${field}">${label}</label><output id="value-${field}">${p[field].toFixed(field==='angle'?0:2)} ${unit}</output><input id="control-${field}" type="range" data-field="${field}" data-unit="${unit}" min="${min}" max="${max}" step="${step}" value="${p[field]}" aria-label="${label} of ${escape(p.name)}" ${busy?'disabled':''}/></div>`).join('')}<div class="inspector-note">One change can make all the difference.</div></div>`:p?`<p class="muted">${escape(p.name)} · ${escape(p.kind)} · ${escape(p.id)}</p>`:'<p class="muted">No objects in this project. An agent can add one, or start fresh.</p>';
   $('#undo').disabled=busy||!state.canUndo;$('#redo').disabled=busy||!state.canRedo;
   const notes=state.feedback.filter(n=>!n.resolved);
   $('#note-count').textContent=notes.length;
   $('#feedback-target').textContent=p?`Selected: ${p.name} · revision ${displayed.revision}`:`General note · revision ${displayed.revision}`;
   $('#notes').innerHTML=notes.map(n=>`<article class="note"><small>${escape(n.targetId||'Scene')} · revision ${n.revision}${n.time!=null?' · '+n.time.toFixed(2)+' s':''}</small><p>${escape(n.text)}</p>${n.screenshot?`<img src="${n.screenshot}" alt="Saved view for this feedback"/>`:''}<button data-resolve="${escape(n.id)}">Mark addressed ✓</button></article>`).join('');
   $('#attempt-count').textContent=`${state.attempts.length} ${state.attempts.length===1?'run':'runs'}`;
-  if(state.attempts.length)$('#attempts').innerHTML=state.attempts.map((r,i)=>`<button class="attempt-card ${r.success?'success':''}" data-run="${escape(r.id)}" aria-label="Replay run ${state.attempts.length-i}: ${r.success?'Success':r.status}"><span class="attempt-number">${String(state.attempts.length-i).padStart(2,'0')}</span><span class="attempt-body"><strong>${r.success?'In the cup.':r.status==='fell-short'?'A little short.':r.status==='timeout'?'Not quite moving.':'Missed the landing.'}</strong><small>${r.duration.toFixed(2)} s · ${r.success?'0.4 s settled':`${r.closest.toFixed(2)} m closest`}</small><em>${r.label?escape(r.label):`Revision ${r.revision} · measured physics`}</em></span><span class="attempt-play">▷</span></button>`).join('');
+  if(state.attempts.length)$('#attempts').innerHTML=state.attempts.map((r,i)=>`<button class="attempt-card ${r.success?'success':''}" data-run="${escape(r.id)}" aria-label="Replay run ${state.attempts.length-i}: ${r.success===true?'Success':r.status}"><span class="attempt-number">${String(state.attempts.length-i).padStart(2,'0')}</span><span class="attempt-body"><strong>${r.success===true?'In the cup.':r.success===null?'Completed.':r.status==='fell-short'?'A little short.':r.status==='timeout'?'Not quite moving.':'Missed the landing.'}</strong><small>${r.duration.toFixed(2)} s · ${r.success===true?'0.4 s settled':r.closest==null?'no judge':`${r.closest.toFixed(2)} m closest`}</small><em>${r.label?escape(r.label):`Revision ${r.revision} · measured physics`}</em></span><span class="attempt-play">▷</span></button>`).join('');
   if(view&&!busy&&!player?.run){view.setProject(state.project);view.select(selected);}
   updateControls();
   updateReplay();
@@ -141,7 +142,7 @@ async function solve(){
 function download(name,value){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function showTab(notes){$('#build-panel').hidden=notes;$('#notes-panel').hidden=!notes;$('#build-tab').classList.toggle('active',!notes);$('#notes-tab').classList.toggle('active',notes);$('#build-tab').setAttribute('aria-selected',String(!notes));$('#notes-tab').setAttribute('aria-selected',String(notes));}
 async function captureRequest(request){
-  const oldProject=clone(view.currentProject),oldMotion=view.velocityArrow.visible,oldPosition=view.marble.position.clone(),oldQuaternion=view.marble.quaternion.clone(),oldTrail=view.trailFrames||[];
+  const oldProject=clone(view.currentProject),oldMotion=view.velocityArrow.visible,oldPosition=view.marble?.position.clone(),oldQuaternion=view.marble?.quaternion.clone(),oldTrail=view.trailFrames||[];
   const images=[],metadata=[];
   try {
     view.setProject(request.project);
@@ -157,7 +158,7 @@ async function captureRequest(request){
     } else {view.reset();images.push(view.capture(request.view));metadata.push({...view.lastCapture,revision:request.revision,runId:null,time:0});}
   } finally {
     // Capturing never moves the human's camera or changes their project/replay.
-    view.setProject(oldProject);view.marble.position.copy(oldPosition);view.marble.quaternion.copy(oldQuaternion);view.setTrail(oldTrail);view.select(selected);if(player?.run)view.setMotion(sampleRun(player.run,player.time));view.velocityArrow.visible=oldMotion;
+    view.setProject(oldProject);if(view.marble&&oldPosition){view.marble.position.copy(oldPosition);view.marble.quaternion.copy(oldQuaternion);}view.setTrail(oldTrail);view.select(selected);if(player?.run)view.setMotion(sampleRun(player.run,player.time));view.velocityArrow.visible=oldMotion;
   }
   await api(`capture/${request.id}`,{revision:request.revision,images,metadata});
 }
@@ -176,7 +177,7 @@ async function init(){
   $('#connection').classList.toggle('off',!remote);
   view=new WorkbenchView($('#viewport'),id=>{selected=id;render();view.select(id);});view.setProject(state.project);view.select(selected);
   player=new ReplayPlayer({onFrame:showReplayFrame,onChange:updateReplay,onEnd:run=>{
-    outcome(run.success?'✓ A little momentum. A perfect landing.':`↗ ${run.status}. ${run.closest.toFixed(2)} m closest to the cup.`,run.success);
+    outcome(run.success===true?'✓ A little momentum. A perfect landing.':run.success===null?`↗ ${run.status}.`:`↗ ${run.status}. ${run.closest==null?'No judge.':`${run.closest.toFixed(2)} m closest to the cup.`}`,run.success===true);
     if(run.success)successSound();
   }});
   $('#loading').remove();render();
@@ -195,7 +196,7 @@ async function init(){
   document.body.dataset.ready='true';
 }
 $('#parts').addEventListener('click',event=>{const button=event.target.closest('[data-part]');if(button){selected=button.dataset.part;render();view.select(selected);}});
-$('#inspector').addEventListener('input',event=>{const field=event.target.dataset.field;if(!field||busy)return;if(player.run)resetReplay();const value=Number(event.target.value);$(`#value-${field}`).textContent=`${value.toFixed(field==='angle'?0:2)} ${event.target.dataset.unit}`;const preview=clone(state.project);preview.parts.find(p=>p.id===selected)[field]=value;view.setProject(preview);view.select(selected);});
+$('#inspector').addEventListener('input',event=>{const field=event.target.dataset.field;if(!field||busy)return;if(player.run)resetReplay();const value=Number(event.target.value);$(`#value-${field}`).textContent=`${value.toFixed(field==='angle'?0:2)} ${event.target.dataset.unit}`;const preview=clone(state.project);const part=preview.parts.find(p=>p.id===selected);if(!part)return;part[field]=value;view.setProject(preview);view.select(selected);});
 $('#inspector').addEventListener('change',async event=>{const field=event.target.dataset.field;if(!field||busy)return;try{await edit([{type:'update',id:selected,changes:{[field]:Number(event.target.value)}}]);view.reset();$('#outcome').className='outcome';}catch(error){toast(error.message);await refresh();}});
 $('#evidence-mode').onclick=()=>{view.setDiagnostics(!view.diagnosticsEnabled);$('#evidence-mode').setAttribute('aria-pressed',String(view.diagnosticsEnabled));};
 $('#run').onclick=runHuman;$('#solve').onclick=solve;$('#reset-run').onclick=resetReplay;
@@ -237,7 +238,7 @@ function stepReplay(direction){
   if(frame)seekReplay(frame.t);
 }
 $('#replay-back').onclick=()=>stepReplay(-1);$('#replay-next').onclick=()=>stepReplay(1);
-$('#replay-contacts').onclick=event=>{const b=event.target.closest('[data-contact-time]');if(!b||solving)return;seekReplay(Number(b.dataset.contactTime));if(player.run.project.parts.some(p=>p.id===b.dataset.contactPart)){selected=b.dataset.contactPart;render();view.select(selected);}};
+$('#replay-contacts').onclick=event=>{const b=event.target.closest('[data-contact-time]');if(!b||solving)return;seekReplay(Number(b.dataset.contactTime));if(projectStuff(player.run.project).some(p=>p.id===b.dataset.contactPart)){selected=b.dataset.contactPart;render();view.select(selected);}};
 $('#compare-run').onchange=async event=>{
   const id=event.target.value,active=player.run;if(!active)return;
   try{

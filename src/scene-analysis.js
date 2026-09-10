@@ -15,11 +15,20 @@ function matrixFor(part) {
 }
 
 function localBounds(part) {
+  if (part.kind === 'mesh') {
+    return new THREE.Box3(
+      new THREE.Vector3(-part.length / 2, -0.5, -0.5),
+      new THREE.Vector3(part.length / 2, 0.5, 0.5),
+    );
+  }
   if (part.kind === 'barrier') {
     return new THREE.Box3(
       new THREE.Vector3(-part.length / 2, -0.35, -0.57),
       new THREE.Vector3(part.length / 2, 0.35, 0.57),
     );
+  }
+  if (part.length == null) {
+    return new THREE.Box3(new THREE.Vector3(-0.12, -0.12, -0.12), new THREE.Vector3(0.12, 0.12, 0.12));
   }
   return new THREE.Box3(
     new THREE.Vector3(-part.length / 2, -0.09, -0.69),
@@ -64,43 +73,55 @@ export function cameraRecommendations(sceneBox) {
  * Geometry facts intended for agents. This deliberately uses the same transforms
  * as the Three.js workbench instead of asking a model to infer them from screenshots.
  */
+function describeObject(object, start, goal) {
+  const matrix = matrixFor({ ...object, angle: object.angle ?? 0, yaw: object.yaw ?? 0 });
+  const box = localBounds(object).applyMatrix4(matrix);
+  const surfaceY = object.kind === 'barrier' ? 0.35 : object.kind === 'mesh' ? 0.5 : object.length == null ? 0 : 0.09;
+  const a = new THREE.Vector3(-(object.length || 0) / 2, surfaceY, 0).applyMatrix4(matrix);
+  const b = new THREE.Vector3((object.length || 0) / 2, surfaceY, 0).applyMatrix4(matrix);
+  const surfaceNormal = new THREE.Vector3(0, 1, 0).transformDirection(matrix).normalize();
+  const localForward = new THREE.Vector3(1, 0, 0).transformDirection(matrix).normalize();
+  const downhill = localForward.clone();
+  if (downhill.y > 0) downhill.multiplyScalar(-1);
+  const startDistance = start ? Math.min(a.distanceTo(start), b.distanceTo(start)) : null;
+  const goalDistance = goal ? Math.min(a.distanceTo(goal), b.distanceTo(goal)) : null;
+  return {
+    id: object.id,
+    name: object.name,
+    kind: object.kind,
+    collider: object.collider,
+    transform: {
+      position: { x: object.x, y: object.y, z: object.z },
+      angleDeg: object.angle ?? 0,
+      yawDeg: object.yaw ?? 0,
+      length: object.length ?? 0,
+      matrixWorld: matrix.elements.map(round),
+    },
+    bounds: boxRecord(box),
+    endpoints: [vec(a), vec(b)],
+    surfaceNormal: vec(surfaceNormal),
+    downhill: Math.abs(downhill.y) < 1e-8 ? null : vec(downhill),
+    slope: round(Math.abs(downhill.y)),
+    nearestEndpointToStart: startDistance == null ? null : round(startDistance),
+    nearestEndpointToGoal: goalDistance == null ? null : round(goalDistance),
+  };
+}
+
 export function analyzeScene(project) {
-  const goal = new THREE.Vector3(RULES.goal.x, RULES.goal.y, RULES.goal.z);
-  const start = new THREE.Vector3(RULES.start.x, RULES.start.y, RULES.start.z);
+  const marble = project.world?.objects?.find(o => o.kind === 'marble');
+  const cup = project.world?.objects?.find(o => o.kind === 'cup');
+  const goal = cup ? new THREE.Vector3(cup.x, cup.y, cup.z) : null;
+  const start = marble ? new THREE.Vector3(marble.x, marble.y, marble.z) : null;
   const sceneBox = new THREE.Box3();
   const parts = project.parts.map(part => {
-    const matrix = matrixFor(part);
-    const box = localBounds(part).applyMatrix4(matrix);
-    sceneBox.union(box);
-    const surfaceY = part.kind === 'barrier' ? 0.35 : 0.09;
-    const a = new THREE.Vector3(-part.length / 2, surfaceY, 0).applyMatrix4(matrix);
-    const b = new THREE.Vector3(part.length / 2, surfaceY, 0).applyMatrix4(matrix);
-    const surfaceNormal = new THREE.Vector3(0, 1, 0).transformDirection(matrix).normalize();
-    const localForward = new THREE.Vector3(1, 0, 0).transformDirection(matrix).normalize();
-    const downhill = localForward.clone();
-    if (downhill.y > 0) downhill.multiplyScalar(-1);
-    const startDistance = Math.min(a.distanceTo(start), b.distanceTo(start));
-    const goalDistance = Math.min(a.distanceTo(goal), b.distanceTo(goal));
-    return {
-      id: part.id,
-      name: part.name,
-      kind: part.kind,
-      transform: {
-        position: { x: part.x, y: part.y, z: part.z },
-        angleDeg: part.angle,
-        yawDeg: part.yaw,
-        length: part.length,
-        matrixWorld: matrix.elements.map(round),
-      },
-      bounds: boxRecord(box),
-      endpoints: [vec(a), vec(b)],
-      surfaceNormal: vec(surfaceNormal),
-      downhill: Math.abs(downhill.y) < 1e-8 ? null : vec(downhill),
-      slope: round(Math.abs(downhill.y)),
-      nearestEndpointToStart: round(startDistance),
-      nearestEndpointToGoal: round(goalDistance),
-    };
+    const record = describeObject(part, start, goal);
+    sceneBox.union(new THREE.Box3(new THREE.Vector3(record.bounds.min.x, record.bounds.min.y, record.bounds.min.z), new THREE.Vector3(record.bounds.max.x, record.bounds.max.y, record.bounds.max.z)));
+    return record;
   });
+  const objects = [
+    ...parts,
+    ...(project.world?.objects || []).map(object => describeObject(object, start, goal)),
+  ];
 
   const gaps = [];
   for (let i = 0; i < parts.length - 1; i++) {
@@ -133,11 +154,12 @@ export function analyzeScene(project) {
 
   return {
     coordinateSystem: 'Y-up, metres; angles in degrees at the authoring boundary',
-    start: vec(start),
-    goal: { ...vec(goal), radius: RULES.goalRadius },
+    start: start ? vec(start) : null,
+    goal: goal ? { ...vec(goal), radius: RULES.goalRadius } : null,
     sceneBounds: sceneBox.isEmpty() ? null : boxRecord(sceneBox),
     cameraRecommendations: cameraRecommendations(sceneBox),
     parts,
+    objects,
     gaps,
     gapMethod: 'Nearest deck-centre endpoints between adjacent project entries; not collision clearance or a reachability prediction.',
   };

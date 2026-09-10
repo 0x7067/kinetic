@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
@@ -79,6 +79,49 @@ test('CLI exposes a complete inspect -> run -> edit -> run -> undo loop', async 
   assert.equal(doctor.reachable, true);
   assert.equal(doctor.fixedGravity, true);
   assert.equal(doctor.stableIds, true);
+});
+
+test('CLI import/set/save/run a non-marble two-boxes project', async t => {
+  const folder = mkdtempSync(join(tmpdir(), 'kinetic-boxes-'));
+  const server = spawn(process.execPath, ['server/http.js'], {
+    cwd: ROOT,
+    env: { ...process.env, PORT: String(PORT + 1), KINETIC_DATA: join(folder, 'project.json') },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(() => { server.kill('SIGTERM'); rmSync(folder, { recursive: true, force: true }); });
+  const url = `http://127.0.0.1:${PORT + 1}`;
+  for (let i = 0; i < 100; i++) {
+    try { const r = await fetch(`${url}/api/state`); if (r.ok) break; } catch {}
+    if (i === 99) throw new Error('server did not start');
+    await new Promise(r => setTimeout(r, 50));
+  }
+  const runCli = (...args) => {
+    const result = spawnSync(process.execPath, ['cli.js', ...args, '--url', url, '--json'], { cwd: ROOT, encoding: 'utf8', timeout: 25000 });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return JSON.parse(result.stdout);
+  };
+  const imported = runCli('import', resolve(ROOT, 'examples/two-boxes.json'), '--revision', '0');
+  assert.equal(imported.project.parts.length, 2);
+  assert.equal(imported.project.judge, undefined);
+  const inspect = runCli('inspect');
+  assert.equal(inspect.analysis.start, null);
+  assert.equal(inspect.analysis.objects.length, 4);
+  const probed = runCli('probe', 'box-b');
+  assert.equal(probed.part.id, 'box-b');
+  const light = runCli('probe', 'key-light');
+  assert.equal(light.part.kind, 'light');
+  const edited = runCli('set', 'box-a', 'y=1.8', '--revision', String(imported.project.revision));
+  assert.equal(edited.project.parts.find(p => p.id === 'box-a').y, 1.8);
+  const run = runCli('run');
+  assert.equal(run.success, null);
+  assert.equal(run.status, 'completed');
+  assert.equal(run.contacts.length, 0);
+  const saved = join(folder, 'two-boxes-out.json');
+  runCli('save', saved, '--force');
+  const roundTrip = JSON.parse(readFileSync(saved, 'utf8'));
+  assert.equal(roundTrip.parts.find(p => p.id === 'box-a').y, 1.8);
+  assert.ok(!roundTrip.judge);
+  assert.equal(roundTrip.world.objects.length, 2);
 });
 
 test('CLI help is useful without a running server and global flags can precede commands', () => {

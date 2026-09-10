@@ -24,11 +24,7 @@ export class WorkbenchView {
     light.shadow.normalBias = 0.03; light.shadow.bias = -0.0003; light.shadow.radius = 4; this.scene.add(light);
     const rim = new THREE.DirectionalLight(0xf3ffff, 1.5); rim.position.set(8, 6, -8); this.scene.add(rim);
     this.staticGroup = new THREE.Group(); this.partsGroup = new THREE.Group(); this.scene.add(this.staticGroup, this.partsGroup);
-    this.buildTable(); this.buildCup();
-    this.marble = new THREE.Mesh(new THREE.SphereGeometry(RULES.radius, 40, 24), new THREE.MeshPhysicalMaterial({ color: palette.coral, roughness: 0.2, metalness: 0.18, clearcoat: 1, clearcoatRoughness: 0.12 }));
-    this.marble.castShadow = true; this.scene.add(this.marble);
-    const band = new THREE.Mesh(new THREE.TorusGeometry(RULES.radius * 0.98, 0.019, 8, 40), new THREE.MeshStandardMaterial({ color: 0xffe5c8, roughness: 0.35 }));
-    band.rotation.x = Math.PI / 2; this.marble.add(band);
+    this.marble = null;
     this.trailGeometry = new THREE.BufferGeometry();
     this.trailGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(1024 * 3), 3).setUsage(THREE.DynamicDrawUsage));
     this.trailGeometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(1024 * 3), 3).setUsage(THREE.DynamicDrawUsage));
@@ -83,11 +79,11 @@ export class WorkbenchView {
     this.text(g,'001   •   EARTH GRAVITY',4.6,-0.025,3.32,3);
     for(let i=0;i<15;i++)this.box(g,0.015,0.007,i%5===0?0.18:0.08,0x8fa08f,-7+i,-0.03,-3.5,0.002);
     // A small start marker is a visual guide only; the marble is released from rest.
-    const start=RULES.start;
+    const start=this.worldObject('marble') || RULES.start;
     const ring=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.018,8,40),this.material(palette.coral));ring.rotation.x=Math.PI/2;ring.position.set(start.x,start.y+0.12,start.z);g.add(ring);
   }
   buildCup() {
-    const g=this.staticGroup, x=RULES.goal.x;
+    const g=this.staticGroup, cup=this.worldObject('cup'), x=cup?.x ?? RULES.goal.x;
     this.cylinder(g,0.93,0.25,0xc9bfa6,x,0.08,0);
     this.cylinder(g,0.75,0.32,palette.cream,x,0.2,0);
     this.cylinder(g,0.65,0.012,palette.gold,x,0.369,0);
@@ -103,17 +99,49 @@ export class WorkbenchView {
     this.goalHalo=new THREE.Mesh(new THREE.RingGeometry(0.98,1.03,64),new THREE.MeshBasicMaterial({color:palette.teal,transparent:true,opacity:0.45,side:THREE.DoubleSide}));
     this.goalHalo.rotation.x=-Math.PI/2;this.goalHalo.position.set(x,-0.027,0);g.add(this.goalHalo);
   }
+  worldObject(kind) { return this.currentProject?.world?.objects?.find(o=>o.kind===kind); }
+  ensureMarble(spec) {
+    if (!spec) {
+      if (this.marble) {
+        this.scene.remove(this.marble);
+        this.marble.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});
+        this.marble = null;
+      }
+      return;
+    }
+    if (!this.marble) {
+      this.marble = new THREE.Mesh(new THREE.SphereGeometry(RULES.radius, 40, 24), new THREE.MeshPhysicalMaterial({ color: palette.coral, roughness: 0.2, metalness: 0.18, clearcoat: 1, clearcoatRoughness: 0.12 }));
+      this.marble.castShadow = true; this.scene.add(this.marble);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(RULES.radius * 0.98, 0.019, 8, 40), new THREE.MeshStandardMaterial({ color: 0xffe5c8, roughness: 0.35 }));
+      band.rotation.x = Math.PI / 2; this.marble.add(band);
+    }
+    this.marble.position.set(spec.x, spec.y, spec.z);
+  }
   setProject(project) {
-    const signature = JSON.stringify(project.parts);
+    const signature = JSON.stringify({ parts: project.parts, world: project.world });
     this.currentProject = structuredClone(project);
     if (signature === this.projectSignature) return;
     this.projectSignature = signature;
     this.clearGroup(this.diagnostics);
+    this.clearGroup(this.staticGroup);
+    if (this.worldObject('workbench')) this.buildTable();
+    if (this.worldObject('cup')) this.buildCup();
+    for (const object of project.world?.objects || []) {
+      if (object.kind !== 'light') continue;
+      const light = new THREE.DirectionalLight(0xfff1da, object.intensity ?? 2.2);
+      light.position.set(object.x, object.y, object.z); this.staticGroup.add(light);
+    }
+    this.ensureMarble(this.worldObject('marble'));
     for (const child of [...this.partsGroup.children]) { child.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});this.partsGroup.remove(child); }
     this.meshes=[];
     project.parts.forEach((p,i)=>{
       const group=new THREE.Group();group.position.set(p.x,p.y,p.z);group.rotation.order='YXZ';group.rotation.y=p.yaw*Math.PI/180;group.rotation.z=p.angle*Math.PI/180;group.userData.partId=p.id;
       const color=i===0?palette.coral:i===1?palette.cream:palette.teal;
+      if (p.kind === 'mesh') {
+        this.box(group,p.length,1,1,color);
+        this.partsGroup.add(group);this.meshes.push(group);
+        return;
+      }
       const h=p.kind==='barrier'?0.7:0.18;
       this.box(group,p.length,h,1.14,color);
       if(p.kind!=='barrier')for(const z of [-0.63,0.63])this.box(group,p.length,0.44,0.12,color,0,0.15,z,0.04);
@@ -152,8 +180,12 @@ export class WorkbenchView {
 
   select(id) { this.selectedId=id;const g=this.meshes.find(m=>m.userData.partId===id);this.selection.visible=!!g;if(g){g.updateMatrixWorld(true);this.selection.box.setFromObject(g).expandByScalar(0.06);} }
   resize() { const w=this.host.clientWidth,h=this.host.clientHeight;if(!w||!h)return;this.renderer.setSize(w,h);const span=Math.max(6.8,9.8*h/w);this.camera.top=span;this.camera.bottom=-span;this.camera.left=-span*w/h;this.camera.right=span*w/h;this.camera.updateProjectionMatrix(); }
-  reset() { this.marble.position.set(RULES.start.x,RULES.start.y,RULES.start.z);this.marble.quaternion.identity();this.setTrail([]); this.velocityArrow.visible=false; }
-  setFrame(frame) { if(!frame)return;this.marble.position.set(frame.x,frame.y,frame.z);this.marble.quaternion.fromArray(frame.q); }
+  reset() {
+    const marble = this.worldObject('marble');
+    if (this.marble && marble) { this.marble.position.set(marble.x, marble.y, marble.z); this.marble.quaternion.identity(); }
+    this.setTrail([]); this.velocityArrow.visible=false;
+  }
+  setFrame(frame) { if(!frame||!this.marble)return;this.marble.position.set(frame.x,frame.y,frame.z);this.marble.quaternion.fromArray(frame.q); }
   setTrail(frames) {
     this.trailFrames = frames;
     const count=Math.min(frames.length,1024), positions=this.trailGeometry.getAttribute('position'), colors=this.trailGeometry.getAttribute('color');
@@ -162,6 +194,7 @@ export class WorkbenchView {
     positions.needsUpdate=true; colors.needsUpdate=true; this.trailGeometry.setDrawRange(0,count);
   }
   setMotion(frame) {
+    if (!this.marble) { this.velocityArrow.visible = false; return; }
     const velocity = new THREE.Vector3(frame.vx || 0, frame.vy || 0, frame.vz || 0);
     const speed = velocity.length(); this.velocityArrow.visible = speed > .04;
     if (speed > .04) {
@@ -178,10 +211,12 @@ export class WorkbenchView {
     const geometry = new THREE.BufferGeometry().setFromPoints(run.frames.map(f=>new THREE.Vector3(f.x,f.y,f.z)));
     const trail = new THREE.Line(geometry, new THREE.LineDashedMaterial({color:0x5c6faf,transparent:true,opacity:.65,dashSize:.12,gapSize:.09,depthWrite:false}));
     trail.computeLineDistances(); this.comparison.add(trail);
-    this.ghostMarble = new THREE.Mesh(new THREE.SphereGeometry(RULES.radius,24,16),new THREE.MeshBasicMaterial({color:0x6275b5,transparent:true,opacity:.4,depthWrite:false}));
-    this.comparison.add(this.ghostMarble);
+    if ((run.project?.world?.objects || []).some(o => o.kind === 'marble')) {
+      this.ghostMarble = new THREE.Mesh(new THREE.SphereGeometry(RULES.radius,24,16),new THREE.MeshBasicMaterial({color:0x6275b5,transparent:true,opacity:.4,depthWrite:false}));
+      this.comparison.add(this.ghostMarble);
+    }
     for (const p of run.project.parts) {
-      const base = new THREE.BoxGeometry(p.length,p.kind==='barrier'?.7:.18,1.14);
+      const base = new THREE.BoxGeometry(p.length, p.kind==='mesh'?1:p.kind==='barrier'?.7:.18, p.kind==='mesh'?1:1.14);
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(base), new THREE.LineBasicMaterial({color:0x6275b5,transparent:true,opacity:.3,depthWrite:false}));
       base.dispose(); edges.position.set(p.x,p.y,p.z);edges.rotation.order='YXZ';edges.rotation.y=p.yaw*Math.PI/180;edges.rotation.z=p.angle*Math.PI/180;
       this.comparison.add(edges);
@@ -202,8 +237,21 @@ export class WorkbenchView {
     const width=Math.max(1,Math.round(originalSize.x*scale)),height=Math.max(1,Math.round(originalSize.y*scale));
     if(options.mode || options.focus) {
       let box;
-      if(options.focus){const object=this.meshes.find(m=>m.userData.partId===options.focus);if(!object)throw new Error('Unknown capture focus: '+options.focus);box=new THREE.Box3().setFromObject(object);}
-      else {box=new THREE.Box3().setFromObject(this.partsGroup);box.expandByPoint(new THREE.Vector3(RULES.start.x,RULES.start.y,RULES.start.z));box.expandByPoint(new THREE.Vector3(RULES.goal.x,RULES.goal.y,RULES.goal.z));}
+      if(options.focus){
+        const object=this.meshes.find(m=>m.userData.partId===options.focus);
+        if(object) box=new THREE.Box3().setFromObject(object);
+        else {
+          const stuff=(this.currentProject?.world?.objects||[]).find(o=>o.id===options.focus);
+          if(!stuff)throw new Error('Unknown capture focus: '+options.focus);
+          box=new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(stuff.x,stuff.y,stuff.z), new THREE.Vector3(.4,.4,.4));
+        }
+      }
+      else {
+        box=new THREE.Box3().setFromObject(this.partsGroup);
+        const marble=this.worldObject('marble'), cup=this.worldObject('cup');
+        if (marble) box.expandByPoint(new THREE.Vector3(marble.x, marble.y, marble.z));
+        if (cup) box.expandByPoint(new THREE.Vector3(cup.x, cup.y, cup.z));
+      }
       const sphere=box.getBoundingSphere(new THREE.Sphere()),target=sphere.center;
       const direction=new THREE.Vector3(...(options.mode==='top'?[0,1,.001]:options.mode==='side'?[0,0,1]:[1,.8,1])).normalize();
       camera.position.copy(target).addScaledVector(direction,Math.max(6,sphere.radius*3));camera.up.set(0,1,0);camera.lookAt(target);

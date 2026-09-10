@@ -1,7 +1,7 @@
 import { LIMITS, clone } from './model.js';
 // A deliberately small, inspectable search policy. This is not an LLM or a canned replay.
 const moves = [['y', -0.25], ['y', 0.25], ['angle', -6], ['angle', 6], ['length', 0.35], ['x', -0.3], ['x', 0.3], ['y', -0.5], ['y', 0.5], ['angle', -12], ['angle', 12], ['length', 0.7]];
-export function score(run) { return run.success ? 1000 - run.duration : 20 - run.closest; }
+export function score(run) { return run.success ? 1000 - run.duration : 20 - (run.closest ?? 20); }
 export function propose(project, run, iteration = 0) {
   const touched = run.contacts.filter(c => project.parts.some(p => p.id === c.part));
   const id = touched.at(-1)?.part || project.parts[0]?.id;

@@ -57,8 +57,8 @@ export function createClient(input) {
     async inspect(options = {}) { const state = await request('/api/inspect', options); return { ...state, analysis: analyzeScene(state.project) }; },
     async probe(id) {
       const state = await request('/api/state'); const analysis = analyzeScene(state.project);
-      const part = analysis.parts.find(p => p.id === id);
-      if (!part) throw new ClientError('NOT_FOUND', `Unknown part ${id}.`, `Available IDs: ${state.project.parts.map(p=>p.id).join(', ') || 'none'}.`);
+      const part = (analysis.objects || analysis.parts).find(p => p.id === id);
+      if (!part) throw new ClientError('NOT_FOUND', `Unknown part ${id}.`, `Available IDs: ${(analysis.objects || state.project.parts).map(p=>p.id).join(', ') || 'none'}.`);
       return { revision: state.project.revision, part, gaps: analysis.gaps.filter(g=>g.from===id||g.to===id), goal:analysis.goal, cameraRecommendations:analysis.cameraRecommendations };
     },
     edit: args => request('/api/edit', args),
