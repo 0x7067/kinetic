@@ -19,9 +19,6 @@ export class WorkbenchView {
     this.controls.target.set(0, 1.5, 0); this.controls.enableDamping = true; this.controls.enablePan = false;
     this.controls.minZoom = 0.65; this.controls.maxZoom = 2; this.controls.minPolarAngle = 0.12; this.controls.maxPolarAngle = 1.45;
     const hemi = new THREE.HemisphereLight(0xfffcf3, 0x85978d, 3); this.scene.add(hemi);
-    const light = new THREE.DirectionalLight(0xfff1da, 4.5); light.position.set(-5, 12, 5); light.castShadow = true;
-    light.shadow.mapSize.set(1024, 1024); Object.assign(light.shadow.camera, { left: -11, right: 11, top: 9, bottom: -9, far: 40 });
-    light.shadow.normalBias = 0.03; light.shadow.bias = -0.0003; light.shadow.radius = 4; this.scene.add(light);
     const rim = new THREE.DirectionalLight(0xf3ffff, 1.5); rim.position.set(8, 6, -8); this.scene.add(rim);
     this.staticGroup = new THREE.Group(); this.partsGroup = new THREE.Group(); this.scene.add(this.staticGroup, this.partsGroup);
     this.marble = null;
@@ -48,6 +45,11 @@ export class WorkbenchView {
     });
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(host); this.resize();
     this.reset(); this.running = true; this.loop();
+  }
+  addKeyLight(parent) {
+    const light = new THREE.DirectionalLight(0xfff1da, 4.5); light.position.set(-5, 12, 5); light.castShadow = true;
+    light.shadow.mapSize.set(1024, 1024); Object.assign(light.shadow.camera, { left: -11, right: 11, top: 9, bottom: -9, far: 40 });
+    light.shadow.normalBias = 0.03; light.shadow.bias = -0.0003; light.shadow.radius = 4; parent.add(light); return light;
   }
   material(color, extra={}) { return new THREE.MeshStandardMaterial({ color, roughness: 0.72, ...extra }); }
   box(parent, w,h,d, color, x=0,y=0,z=0, radius=0.06) {
@@ -127,10 +129,14 @@ export class WorkbenchView {
     this.clearGroup(this.staticGroup);
     if (this.worldObject('workbench')) this.buildTable();
     if (this.worldObject('cup')) this.buildCup();
-    for (const object of project.world?.objects || []) {
-      if (object.kind !== 'light') continue;
-      const light = new THREE.DirectionalLight(0xfff1da, object.intensity ?? 2.2);
-      light.position.set(object.x, object.y, object.z); this.staticGroup.add(light);
+    const lights = (project.world?.objects || []).filter(o => o.kind === 'light');
+    if (lights.length) {
+      for (const object of lights) {
+        const light = new THREE.DirectionalLight(0xfff1da, object.intensity ?? 2.2);
+        light.position.set(object.x, object.y, object.z); this.staticGroup.add(light);
+      }
+    } else {
+      this.addKeyLight(this.staticGroup);
     }
     this.ensureMarble(this.worldObject('marble'));
     for (const child of [...this.partsGroup.children]) { child.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map)o.material.map.dispose();o.material.dispose();}});this.partsGroup.remove(child); }
