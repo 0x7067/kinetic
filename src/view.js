@@ -83,21 +83,21 @@ export class WorkbenchView {
     const ring=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.018,8,40),this.material(palette.coral));ring.rotation.x=Math.PI/2;ring.position.set(start.x,start.y+0.12,start.z);g.add(ring);
   }
   buildCup() {
-    const g=this.staticGroup, cup=this.worldObject('cup'), x=cup?.x ?? RULES.goal.x;
-    this.cylinder(g,0.93,0.25,0xc9bfa6,x,0.08,0);
-    this.cylinder(g,0.75,0.32,palette.cream,x,0.2,0);
-    this.cylinder(g,0.65,0.012,palette.gold,x,0.369,0);
+    const g=this.staticGroup, cup=this.worldObject('cup'), x=cup?.x ?? RULES.goal.x, z=cup?.z ?? RULES.goal.z;
+    this.cylinder(g,0.93,0.25,0xc9bfa6,x,0.08,z);
+    this.cylinder(g,0.75,0.32,palette.cream,x,0.2,z);
+    this.cylinder(g,0.65,0.012,palette.gold,x,0.369,z);
     // Repeated ribs share geometry/material and one instanced draw call.
     const ribs = new THREE.InstancedMesh(new RoundedBoxGeometry(.10,.66,.10,2,.025), this.material(palette.cream), 48);
     const dummy = new THREE.Object3D();
-    for(let i=0;i<48;i++){const a=i*Math.PI*2/48;dummy.position.set(x+Math.cos(a)*.73,.61,Math.sin(a)*.73);dummy.rotation.y=-a;dummy.updateMatrix();ribs.setMatrixAt(i,dummy.matrix);}
+    for(let i=0;i<48;i++){const a=i*Math.PI*2/48;dummy.position.set(x+Math.cos(a)*.73,.61,z+Math.sin(a)*.73);dummy.rotation.y=-a;dummy.updateMatrix();ribs.setMatrixAt(i,dummy.matrix);}
     ribs.instanceMatrix.needsUpdate=true; ribs.castShadow=true; ribs.receiveShadow=true; g.add(ribs);
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.73,0.07,12,64),this.material(palette.teal));ring.rotation.x=Math.PI/2;ring.position.set(x,0.96,0);g.add(ring);
-    this.cylinder(g,0.025,1.7,palette.ink,x+0.84,0.9,-0.6);
-    const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.32),new THREE.MeshStandardMaterial({color:palette.gold,side:THREE.DoubleSide}));flag.position.set(x+1.12,1.57,-0.6);g.add(flag);
-    this.text(g,'F I N I S H',x,0.001,1.65,1.8,'#456e60');
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(0.73,0.07,12,64),this.material(palette.teal));ring.rotation.x=Math.PI/2;ring.position.set(x,0.96,z);g.add(ring);
+    this.cylinder(g,0.025,1.7,palette.ink,x+0.84,0.9,z-0.6);
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.32),new THREE.MeshStandardMaterial({color:palette.gold,side:THREE.DoubleSide}));flag.position.set(x+1.12,1.57,z-0.6);g.add(flag);
+    this.text(g,'F I N I S H',x,0.001,z+1.65,1.8,'#456e60');
     this.goalHalo=new THREE.Mesh(new THREE.RingGeometry(0.98,1.03,64),new THREE.MeshBasicMaterial({color:palette.teal,transparent:true,opacity:0.45,side:THREE.DoubleSide}));
-    this.goalHalo.rotation.x=-Math.PI/2;this.goalHalo.position.set(x,-0.027,0);g.add(this.goalHalo);
+    this.goalHalo.rotation.x=-Math.PI/2;this.goalHalo.position.set(x,-0.027,z);g.add(this.goalHalo);
   }
   worldObject(kind) { return this.currentProject?.world?.objects?.find(o=>o.kind===kind); }
   ensureMarble(spec) {

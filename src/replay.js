@@ -50,7 +50,7 @@ export function compareRuns(baseline, candidate) {
   }
   return {
     baseline: runSummary(baseline), candidate: runSummary(candidate), changes,
-    closestDelta: +(candidate.closest - baseline.closest).toFixed(4),
+    closestDelta: candidate.closest == null || baseline.closest == null ? null : +(candidate.closest - baseline.closest).toFixed(4),
     durationDelta: +(candidate.duration - baseline.duration).toFixed(4),
     interpretation: 'Deltas are candidate minus baseline. A smaller miss distance alone is not success; read success/status. Traces align by simulated time, not normalized progress.',
   };

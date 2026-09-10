@@ -22,16 +22,16 @@ function completedRun(project, extra = {}) {
     frames: extra.frames ?? [identityFrame(0)], project, createdAt: extra.createdAt ?? new Date().toISOString(),
   };
 }
-function findObject(project, kind, id) {
-  return (project.world?.objects || []).find(o => o.id === id || o.kind === kind);
+function findObject(project, id) {
+  return (project.world?.objects || []).find(o => o.id === id);
 }
 /** Build Rapier colliders only from document objects. Never invent a marble. */
 export function buildColliders(world, project, names, surfaces) {
   const add = (desc, body, name, surface = name) => { const c = world.createCollider(desc, body); names.set(c.handle, name); surfaces.set(c.handle, surface); return c; };
   const objects = project.world?.objects || [];
   const workbench = objects.find(o => o.kind === 'workbench' && worldObjectCollides(o));
-  const cup = objects.find(o => o.kind === 'cup' && worldObjectCollides(o));
-  const marble = objects.find(o => o.kind === 'marble' && worldObjectCollides(o));
+  const cup = objects.find(o => o.kind === 'cup' && worldObjectCollides(o) && (!project.judge || o.id === project.judge.target));
+  const marble = objects.find(o => o.kind === 'marble' && worldObjectCollides(o) && (!project.judge || o.id === project.judge.body));
   let base = null;
   const ensureBase = () => { base ??= world.createRigidBody(RAPIER.RigidBodyDesc.fixed()); return base; };
   if (workbench) add(RAPIER.ColliderDesc.cuboid(8, 0.2, 4.4).setTranslation(workbench.x, workbench.y, workbench.z).setFriction(0.6), ensureBase(), 'workbench');
@@ -56,10 +56,10 @@ export function buildColliders(world, project, names, surfaces) {
     for (let i = 0; i < 24; i++) {
       const a = i * Math.PI * 2 / 24;
       const q = { x: 0, y: Math.sin(-a / 2), z: 0, w: Math.cos(-a / 2) };
-      add(RAPIER.ColliderDesc.cuboid(0.055, 0.33, 0.108).setTranslation(goal.x + Math.cos(a) * 0.73, 0.61, Math.sin(a) * 0.73).setRotation(q).setFriction(0.7).setRestitution(0.01), ensureBase(), 'cup', 'cup-wall');
+      add(RAPIER.ColliderDesc.cuboid(0.055, 0.33, 0.108).setTranslation(goal.x + Math.cos(a) * 0.73, 0.61, goal.z + Math.sin(a) * 0.73).setRotation(q).setFriction(0.7).setRestitution(0.01), ensureBase(), 'cup', 'cup-wall');
     }
     if (project.judge?.type === 'dwell-sensor') {
-      sensor = add(RAPIER.ColliderDesc.cylinder(0.30, 0.51).setTranslation(goal.x, 0.64, 0).setSensor(true).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS), ensureBase(), 'target');
+      sensor = add(RAPIER.ColliderDesc.cylinder(0.30, 0.51).setTranslation(goal.x, 0.64, goal.z).setSensor(true).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS), ensureBase(), 'target');
     }
   }
   let ball = null, ballCollider = null;
@@ -73,7 +73,7 @@ function evaluateJudge(project, { status, inside, speed, position, hitBench, dwe
   const judge = project.judge;
   if (!judge) return { status: 'completed', success: null, dwell, done: elapsed >= RULES.duration };
   if (judge.type !== 'dwell-sensor') return { status: 'completed', success: null, dwell, done: true };
-  const goal = findObject(project, 'cup', judge.target);
+  const goal = findObject(project, judge.target);
   const required = judge.dwell ?? RULES.dwell;
   let nextDwell = inside && speed < 1.2 && position.y < 0.88 ? dwell + RULES.timestep : 0;
   if (nextDwell >= required) return { status: 'success', success: true, dwell: nextDwell, done: true };

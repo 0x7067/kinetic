@@ -34,6 +34,11 @@ test('comparison reports actual changed fields and candidate-minus-baseline delt
   assert.equal(delta.baseline.success,false);assert.equal(delta.candidate.success,true);assert.ok(!('frames' in delta.baseline));
 });
 test('same-run comparison reports no imaginary improvement',()=>{const a=makeRun(),d=compareRuns(a,a);assert.deepEqual(d.changes,[]);assert.equal(d.closestDelta,0);});
+test('comparison does not invent a closest delta when a run has no goal',()=>{
+  const a=makeRun();a.closest=null;const b=structuredClone(a);b.id='candidate';
+  assert.equal(compareRuns(a,b).closestDelta,null);
+  assert.equal(compareRuns(b,makeRun()).closestDelta,null);
+});
 test('historical feedback anchors to the viewed snapshot even after target deletion',()=>{
   const w=new Workshop(),run=makeRun();w.edit({expectedRevision:0,operations:[{type:'remove',id:'bridge'}]});
   const note=w.addFeedback({text:'This collision',targetId:'bridge',runId:run.id,time:1,expectedRevision:0},run);

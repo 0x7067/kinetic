@@ -40,8 +40,9 @@ export function worldObjectCollides(object) {
   if (object.kind === 'light' || object.kind === 'camera') return false;
   return object.collider !== false;
 }
-export function hasDynamicBody(project) { return (project.world?.objects || []).some(o => o.kind === 'marble'); }
-export function needsRapier(project) { return hasDynamicBody(project); }
+export function hasDynamicBody(project) {
+  return (project.world?.objects || []).some(o => o.kind === 'marble' && worldObjectCollides(o));
+}
 function finiteIn(value, [min, max], label) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
     throw new WorkshopError('OUT_OF_BOUNDS', `${label} must be a finite number between ${min} and ${max}.`);
@@ -119,6 +120,14 @@ export function validateProject(input) {
   const judge = hasJudge ? (input.judge == null ? null : validateJudge(input.judge)) : (hasWorld ? null : clone(MARBLE_JUDGE));
   const ids = [...parts.map(p => p.id), ...world.objects.map(o => o.id)];
   if (new Set(ids).size !== ids.length) throw new WorkshopError('DUPLICATE_ID', 'Every part and world object needs a unique ID.');
+  if (judge) {
+    const body = world.objects.find(o => o.id === judge.body);
+    const target = world.objects.find(o => o.id === judge.target);
+    if (!body) throw new WorkshopError('INVALID_JUDGE', `Judge body ${judge.body} is not in this project.`);
+    if (body.kind !== 'marble') throw new WorkshopError('INVALID_JUDGE', 'Judge body must name a marble.');
+    if (!target) throw new WorkshopError('INVALID_JUDGE', `Judge target ${judge.target} is not in this project.`);
+    if (target.kind !== 'cup') throw new WorkshopError('INVALID_JUDGE', 'Judge target must name a cup.');
+  }
   const project = { version: 1, revision: input.revision, title: input.title, parts, world };
   if (judge) project.judge = judge;
   return project;

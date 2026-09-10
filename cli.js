@@ -169,7 +169,7 @@ async function main() {
     text=`recorded run ${value.run.id} | r${value.revision} (saved r${value.currentRevision})\ntime ${n(value.frame.t,4)}s | position ${xyz(value.frame)} | speed ${n(value.frame.speed)}m/s | ${value.frame.sampleMethod}\nvelocity (${n(value.frame.vx)}, ${n(value.frame.vy)}, ${n(value.frame.vz)}) m/s\nNo physics rerun; no layout change.`;
   } else if(command==='compare') {
     value=await client.compare(a[0],a[1]);
-    text=`baseline ${value.baseline.id} r${value.baseline.revision}: ${value.baseline.status}\ncandidate ${value.candidate.id} r${value.candidate.revision}: ${value.candidate.status}\nclosest delta ${n(value.closestDelta,4)}m; duration delta ${n(value.durationDelta,4)}s\n`+value.changes.map(c=>`${c.id}: ${c.type} ${Object.entries(c.fields||{}).map(([k,v])=>`${k} ${v.before} -> ${v.after}`).join(', ')}`).join('\n')+'\n'+value.interpretation;
+    text=`baseline ${value.baseline.id} r${value.baseline.revision}: ${value.baseline.status}\ncandidate ${value.candidate.id} r${value.candidate.revision}: ${value.candidate.status}\nclosest delta ${value.closestDelta==null?'n/a':n(value.closestDelta,4)+'m'}; duration delta ${n(value.durationDelta,4)}s\n`+value.changes.map(c=>`${c.id}: ${c.type} ${Object.entries(c.fields||{}).map(([k,v])=>`${k} ${v.before} -> ${v.after}`).join(', ')}`).join('\n')+'\n'+value.interpretation;
   } else if(command==='run') {
     value=await client.run({...(o.revision===undefined?{}:{expectedRevision:Number(o.revision)}),capture:!!o.capture,...(o.capture?{view}:{})});
     const outcome=value.success===true?'SUCCESS':value.success===null?'COMPLETED':'FAIL';

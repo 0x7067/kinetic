@@ -246,7 +246,7 @@ $('#compare-run').onchange=async event=>{
     if(player.run!==active)return;comparisonRun=baseline;view.setComparison(baseline);
     if(!baseline){$('#compare-summary').textContent='Select a previous attempt to overlay its recorded path.';return;}
     const delta=compareRuns(baseline,active),fields=delta.changes.flatMap(c=>Object.entries(c.fields||{}).map(([k,v])=>`${c.id}.${k}: ${v.before} → ${v.after}`));
-    $('#compare-summary').textContent=`Blue ghost = r${baseline.revision}. ${fields.join('; ')||'Same part layout'}. Closest-distance change ${delta.closestDelta>0?'+':''}${delta.closestDelta.toFixed(2)} m. Ghost stops at its recorded end.`;
+    $('#compare-summary').textContent=`Blue ghost = r${baseline.revision}. ${fields.join('; ')||'Same part layout'}. Closest-distance change ${delta.closestDelta==null?'n/a':`${delta.closestDelta>0?'+':''}${delta.closestDelta.toFixed(2)} m`}. Ghost stops at its recorded end.`;
     showReplayFrame(sampleRun(active,player.time),active);
   }catch(error){toast(error.message);}
 };

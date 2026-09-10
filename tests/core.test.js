@@ -119,3 +119,20 @@ test('collider:false meshes stay in the document and out of Rapier contacts',asy
 test('typed operations still reject arbitrary code',()=>{
   assert.throws(()=>applyOperations(initialProject(),[{type:'run_js',code:'throw new Error("pwn")'}]),/Arbitrary code is not supported|INVALID_OPERATION|unknown field/i);
 });
+test('judge body and target IDs must exist in the world',()=>{
+  const p=initialProject();
+  assert.throws(()=>validateProject({...p,judge:{type:'dwell-sensor',body:'missing',target:'cup'}}),/Judge body/);
+  assert.throws(()=>validateProject({...p,judge:{type:'dwell-sensor',body:'marble',target:'missing'}}),/Judge target/);
+  assert.throws(()=>validateProject({...p,judge:{type:'dwell-sensor',body:'marble',target:'launch'}}),/Judge target/);
+});
+test('a collider:false marble does not start Rapier even when a judge is present',async()=>{
+  const p=initialProject();
+  p.world.objects=p.world.objects.map(o=>o.kind==='marble'?{...o,collider:false}:o);
+  const validated=validateProject(p);
+  assert.equal(validated.judge.type,'dwell-sensor');
+  const run=await simulate(validated);
+  assert.equal(run.success,null);
+  assert.equal(run.status,'completed');
+  assert.equal(run.contacts.length,0);
+  assert.ok(!run.frames.some(f=>f.x===RULES.start.x&&f.y===RULES.start.y));
+});
