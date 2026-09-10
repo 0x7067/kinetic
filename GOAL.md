@@ -1,5 +1,9 @@
 # Kinetic — general workshop checkpoint
 
+## Push checkpoint — 10 September 2026
+
+The user authorized pushing local `main` to `origin` (`https://github.com/0x7067/kinetic.git`). GitHub repository and branch were checked through `gh-axi`; remote main was `baa153eb879961f3e7eb88f8d6f31ceb2e053cad`, an ancestor of the verified workshop. The working tree was clean. Since the full checks below, only GOAL.md checkpoint notes changed; application source and its evidence remain identical to `eceb7a3`. No tests were repeated for these documentation-only notes. Remote branch confirmation is retained in `evidence/general-final/push-verification.txt`; existing runtime limitations remain unchanged.
+
 ## Local merge — 10 September 2026
 
 At the user's request, local `main` was fast-forwarded from `baa153e` to verified workshop commit `eceb7a335368c21dd0fa7e17204cee6b216c5088`, including the prior agent-usability increment. The working tree was clean and ancestry was checked; the merge required no conflict resolution or application changes. The 87 Node tests, 80 browser checks, build and live MCP evidence below still apply to the identical application source. This checkpoint update is documentation only. No remote push was performed; existing limitations remain unchanged.
