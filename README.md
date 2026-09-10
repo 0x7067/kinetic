@@ -2,6 +2,8 @@
 
 An open workshop for people and agents: create a 3D scene, add text, arrows, images and data plots, inspect its geometry, and optionally simulate physical objects. Three.js supplies rendering and spatial reasoning; Rapier supplies real physics. The loop is create → inspect → run → revise → save. The marble challenge is one example, alongside a blank workspace and a mixed scene.
 
+The [product direction](docs/VISION.md) is broader: create a native Three.js project from scratch or open an existing one, build with an agent, and give human feedback directly on the visible work. The current v0.5 capabilities are described below; general project creation and the shared native-project bridge are the next milestone.
+
 ## Open the workshop
 
 Node.js 22+ and a WebGL2 browser:
@@ -15,6 +17,8 @@ node cli.js serve
 ```
 
 A fresh service opens an empty scene. **Scene example** loads “Motion & meaning,” mixing physical shapes, annotations and an illustrative plot. **Marble example** opens the original fixed challenge. Switching templates is an undoable edit; existing saved projects are retained on startup.
+
+See the [verified showcase and next-step plan](docs/SHOWCASE-AND-NEXT-STEPS.md), including an importable [Bounce lab](examples/bounce-lab.json) with a plot derived from recorded physics.
 
 For browser-only use, run `npm run build` and open `dist/kinetic-standalone.html`. Dependencies are embedded. It has the same authoring, physics and replay UI, with local browser persistence and no CLI/MCP connection. Keep third-party notices with redistributed builds.
 

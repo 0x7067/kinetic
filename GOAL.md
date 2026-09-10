@@ -1,5 +1,42 @@
 # Kinetic — general workshop checkpoint
 
+## Creation from scratch is first-class — 10 September 2026
+
+The user clarified that Kinetic must also create projects from scratch. Updated the vision, first roadmap milestone and README to cover both **New project** and **Open existing project** through a shared project/preview/revision/feedback/export model. New project must scaffold ordinary source, dependency/build setup and the Three.js bridge, open an empty preview, and give the agent the location, revision and capabilities. An existing repository, human-written boilerplate and mandatory templates are not prerequisites.
+
+Acceptance now begins with an empty target directory and covers agent creation of an original animated scene, human feedback, revision, save and reopen; the existing-project path remains required. The current blank v2 scene and the proposed native-project scaffolder are distinguished explicitly. This update changes documentation only. `git diff --check` passed; the prior application checks remain applicable to unchanged source and were not repeated. General project scaffolding, the native-project bridge and richer feedback UI remain unimplemented.
+
+## Product direction clarified — 10 September 2026
+
+The user wants people to build freely with Kinetic, including experiences like `kunchenguid/fly-with-me`: a better interface to Three.js for agents and better visual feedback for humans. Added `docs/VISION.md` and rewrote the next-step sequence in `docs/SHOWCASE-AND-NEXT-STEPS.md`; README distinguishes this direction from implemented v0.5 capabilities. This supersedes the prior inspector-first recommendation.
+
+Proposed milestone: connect a normal Three.js project through a small runtime bridge, expose semantic scene/parameter/source facts, attach human feedback to an exact view/moment/revision, and complete a revision/compare/review/save loop. Keep ordinary project code as the extension path, preserve Workshop adoption/history and v1/v2 projects, and retain the typed local-service boundary. Resource budgets must not turn the current primitive catalog or 64-object schema into the creative boundary of all projects.
+
+Research: Fly With Me README, VISION, CONTRIBUTING and repository tree were read through `gh-axi`, at reference revision `1ede7880d495284687ae67357cf645698c542009` (`evidence/vision/reference-revision.txt`). Its procedural, animated, interactive experience and same-seed/same-vantage review are the compatibility target. The current `validateScenePart`, `Workshop.addFeedback`, shared view/transport paths and installed Three.js Object3D/ObjectLoader surfaces were inspected to distinguish existing support from proposed work.
+
+The published reference was also opened in an isolated browser at seed 42 with WebGL2, Begin was pressed, and the actual flight screenshot was inspected (`evidence/vision/fly-with-me.png`). This was a visual reference check, not integration or performance qualification. Chromium's default launch lacked a usable sandbox in this environment; the isolated reference session required temporary launch flags. No shared browser profile or persistent configuration was changed.
+
+This is a documentation and planning change. Application source and the previously verified 90 Node / 83 browser checks are unchanged; they were not repeated for prose edits. `git diff --check` is the relevant final file check. Native-project loading, the richer feedback interface and Fly With Me integration remain unimplemented.
+
+## Capability showcase and next-step plan — 10 September 2026
+
+Rechecked application source `81f456498` (v0.5.0) on Linux. Added `examples/bounce-lab.json` and `docs/SHOWCASE-AND-NEXT-STEPS.md`, linked from README. Application source is unchanged. The earlier authored-rest camera change is present in this merged checkout.
+
+Completed checks and evidence:
+
+- `npm test`: **90/90 passed**. `npm run build`: passed; standalone **6.55 MB**.
+- All three Python browser suites ran through `uv` with Playwright 1.57.0 and installed Chromium: **35/35**, **24/24 replay**, **24/24 scene**. Zero page exceptions. External stdio MCP returned **five actual PNGs per mode**.
+- Custom live CLI showcase created an 11-object Bounce lab, extracted **122 real time/height samples** into a plot, and confirmed annotations left the physics frames identical. Changing sphere restitution 0.9 → 0.1 changed its height at 1.2 s from **1.9354 m → 0.7794 m**. Both runs correctly use `success:null`.
+- The marble example changed from failure to dwell-confirmed success at **4.8917 s** after lowering `bridge.y` **2.5 → 2.2 m**. Actual replay comparisons and CLI PNGs were captured.
+- Portable Bounce lab export/import retained all 11 object IDs and 122 plot points. Actual desktop/mobile, general scene, bounce replay and marble comparison screenshots were inspected. Nine recorded bounce instants support an interactive showcase; raw browser videos remain available.
+- Final video: `evidence/showcase/bounce-replay.mp4`, 8.8 seconds of actual browser replay at half speed; a frame from the final crop was inspected. Full import verification is recorded in `import-verification.json`; the first compact inspection comparison is preserved separately because default output summarizes plot points.
+- Logs and custom artifacts: `evidence/showcase/`. Required suite results/screenshots: `evidence/browser-results.json`, `evidence/mcp-results.json`, `evidence/replay/`, `evidence/general-browser/`. Source, run IDs and replay times are recorded in the showcase JSON files.
+- Ripwire test gate: no changed/impacted code symbols. `quality-delta` failed to obtain a baseline in this checkout; no quality-delta pass is claimed. No application code changed.
+
+Recommended next increments: compact inspector and authoring layout; readable text/plot captures; bounded experiment bundles with complete MCP export; broader examples and fresh task evaluations. The linked guide supplies acceptance criteria. These are plans, not implemented features or scheduled jobs.
+
+The local demo service was started on loopback port 4317 with isolated state `evidence/showcase/workshop-state.json`. The original default state path was not edited. Captures need a connected browser. Current limits remain 64 objects, 16 dynamic bodies, 1 MB documents, ten-second simulations, primitive-only physics, supplied-data plots and in-memory run/undo history. No hosted deployment, Safari/iPhone verification or hardware-performance claim is made.
+
 ## Authored-rest default framing — 10 September 2026
 
 Ship A on `kin-next-from-v05-1`, started from current main `2e08e49803def79e303167abe93953c59ff10f65` (v0.5.0). Do not revive `kin-scene-first-1` / PR #1. Default iso/side/top cameras and unfocused captures frame authored document transforms rather than live/replay world matrices. `--focus ID` still tight-crops the live object, including an escaped sample. Remote captures that omit `mode` still preserve the human camera. Sphere padding is tighter: zoom uses `radius * 1.08` and camera distance `max(3, r*2)` instead of `1.22` / `max(6, r*3)`. Marble v1 unfocused captures still use the parts group plus start/goal. Failed marble CLI hints now name the last real part ID (not `<last-part>` or workbench). Inspector UI, MCP export, run persistence, physics catalog expansion, PR #1, new views and plot-label redraw remain out of scope.
