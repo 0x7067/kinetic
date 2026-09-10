@@ -226,9 +226,14 @@ function replayText(value) {
 function comparisonText(value) {
   return `baseline ${value.baseline.id} r${value.baseline.revision}: ${value.baseline.status}\ncandidate ${value.candidate.id} r${value.candidate.revision}: ${value.candidate.status}\n${value.closestDelta===null?'no success criterion;':'closest delta '+n(value.closestDelta,4)+'m;'} duration delta ${n(value.durationDelta,4)}s\n`+value.changes.map(c=>`${c.id}: ${c.type} ${Object.entries(c.fields||{}).map(([k,v])=>`${k} ${v.before} -> ${v.after}`).join(', ')}`).join('\n')+'\n'+value.interpretation;
 }
+function marbleFailHint(value) {
+  const skip=new Set(['workbench','cup','marble','target']);
+  const id=[...(value.contacts||[])].reverse().find(c=>c.part&&!skip.has(c.part))?.part;
+  return id?`kinetic probe ${id}; kinetic view side --focus ${id}`:'kinetic inspect';
+}
 function runText(value) {
   if(value.mode==='scene')return `${value.status.toUpperCase()} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\n${value.message}\ncontacts ${value.contacts.map(c=>`${c.part}->${c.other}@${n(c.time,4)}s`).join(', ')}\nnext: kinetic replay ${value.id}; kinetic save scene.json`;
-    else return `${value.success?'SUCCESS':'FAIL'} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\nclosest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}\ncontacts ${value.contacts.map(contactText).join(', ')}\n${value.message}\nnext: ${value.success?'kinetic save working-project.json':'kinetic probe <last-part>; kinetic view side --focus <last-part>'}`;
+    else return `${value.success?'SUCCESS':'FAIL'} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\nclosest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}\ncontacts ${value.contacts.map(contactText).join(', ')}\n${value.message}\nnext: ${value.success?'kinetic save working-project.json':marbleFailHint(value)}`;
 }
 async function main() {
   const {command,options:o,positional:a=[],topic}=parse();

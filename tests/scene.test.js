@@ -1,13 +1,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import * as THREE from 'three';
 import { Workshop, initialProject, validateProject } from '../src/model.js';
 import { initialScene, validateScenePart } from '../src/scene-model.js';
 import { analyzeScene } from '../src/scene-analysis.js';
 import { simulate } from '../src/physics.js';
 import { sampleRun, compareRuns } from '../src/replay.js';
+import { createSceneObject, sceneBounds } from '../src/scene-geometry.js';
+import { captureFrameBox, frameCamera } from '../src/scene-view.js';
 import { summarize } from '../server/client.js';
 const PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
 const workspace=()=>new Workshop({project:initialScene()});
+const workshopFile=fileURLToPath(new URL('../examples/workshop.json',import.meta.url));
+function corners(box) {
+  const pts=[];
+  for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z])pts.push(new THREE.Vector3(x,y,z));
+  return pts;
+}
+function projectCamera(box,mode='iso') {
+  const camera=new THREE.OrthographicCamera(-10,10,7,-7,.1,1000);
+  frameCamera(camera,box,mode);camera.updateProjectionMatrix();camera.updateMatrixWorld();
+  return camera;
+}
 
 test('workspace switching and scene configuration share revision checks and undo history',()=>{
   const w=new Workshop(),marble=w.project;
@@ -86,4 +102,71 @@ test('compact output omits embedded image bytes without changing persisted asset
 
 test('marble project format still rejects scene-only fields and retains locked rules',()=>{
   assert.throws(()=>validateProject({...initialProject(),settings:{gravity:[0,0,0]}}),e=>e.code==='LOCKED_RULES');
+});
+
+test('unfocused scene framing uses authored rest poses, not live or replay world matrices',()=>{
+  const project=initialScene('demo');
+  const group=new THREE.Group();
+  for(const p of project.parts){
+    const g=createSceneObject(p);
+    if(p.id==='ball')g.position.set(p.x,-80,p.z);
+    group.add(g);
+  }
+  group.updateMatrixWorld(true);
+  const live=new THREE.Box3().setFromObject(group);
+  const framed=captureFrameBox(project,group);
+  const authored=sceneBounds(project).bounds;
+  assert.ok(live.min.y<-79);
+  assert.ok(Math.abs(framed.min.y-authored.min.y)<1e-4);
+  assert.ok(framed.min.y>-5);
+  const focused=captureFrameBox(project,group,'ball');
+  assert.ok(focused.min.y<-79);
+  assert.ok(focused.max.y<-78);
+});
+
+test('default iso framing keeps the demo plot, heading and floor inside a tighter ortho view',()=>{
+  const project=validateProject(JSON.parse(readFileSync(workshopFile,'utf8')));
+  const {bounds,parts}=sceneBounds(project);
+  const camera=projectCamera(bounds,'iso');
+  const sphere=bounds.getBoundingSphere(new THREE.Sphere());
+  assert.ok(camera.position.distanceTo(sphere.center)<Math.max(6,sphere.radius*3)-.5);
+  assert.ok(Math.abs(camera.zoom-Math.min(7,10)/Math.max(.9,sphere.radius*1.08))<1e-9);
+  for(const id of ['floor','heading','plot']){
+    const part=parts.find(p=>p.id===id);
+    for(const corner of corners(part.bounds)){
+      const ndc=corner.clone().project(camera);
+      assert.ok(Math.abs(ndc.x)<=.98&&Math.abs(ndc.y)<=.98&&Math.abs(ndc.z)<=1,id);
+    }
+  }
+});
+
+test('an escaped dynamic body stays out of the default frustum and remains a tight focus target',async()=>{
+  const w=workspace();
+  w.edit({expectedRevision:0,operations:[
+    {type:'add',part:{id:'heading',kind:'text',text:'Stay framed',y:2,width:4,height:1}},
+    {type:'add',part:{id:'ball',kind:'sphere',y:2,radius:.4,body:'dynamic'}},
+    {type:'configure',settings:{duration:2}},
+  ]});
+  const run=await simulate(w.project);
+  const end=run.frames.at(-1).objects.ball;
+  assert.ok(end.y<-5);
+  const group=new THREE.Group();
+  for(const p of w.project.parts){
+    const g=createSceneObject(p);
+    if(p.id==='ball'){g.position.set(end.x,end.y,end.z);g.quaternion.fromArray(end.q);}
+    group.add(g);
+  }
+  group.updateMatrixWorld(true);
+  const authored=captureFrameBox(w.project,group);
+  const defaultCam=projectCamera(authored,'iso');
+  const escaped=new THREE.Vector3(end.x,end.y,end.z).project(defaultCam);
+  assert.ok(Math.abs(escaped.x)>1||Math.abs(escaped.y)>1);
+  for(const corner of corners(sceneBounds(w.project).bounds)){
+    const ndc=corner.project(defaultCam);
+    assert.ok(Math.abs(ndc.x)<=1&&Math.abs(ndc.y)<=1&&Math.abs(ndc.z)<=1);
+  }
+  const focusCam=projectCamera(captureFrameBox(w.project,group,'ball'),'iso');
+  const close=new THREE.Vector3(end.x,end.y,end.z).project(focusCam);
+  assert.ok(Math.abs(close.x)<=.6&&Math.abs(close.y)<=.6);
+  assert.ok(focusCam.zoom>defaultCam.zoom*2);
 });

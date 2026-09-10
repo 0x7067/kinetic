@@ -53,6 +53,11 @@ test('CLI exposes a complete inspect -> run -> edit -> run -> undo loop', async 
   assert.ok(first.closestPoint && Number.isFinite(first.closestTime));
   assert.ok(first.trajectorySample.length >= 3);
   assert.equal('frames' in first, false, 'compact JSON must not dump the full trajectory by default');
+  const failText = spawnSync(process.execPath, ['cli.js', 'run', '--url', URL], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(failText.status, 0, failText.stderr || failText.stdout);
+  const lastPart=[...first.contacts].reverse().find(c=>c.part&&c.part!=='workbench'&&c.part!=='cup').part;
+  assert.match(failText.stdout, new RegExp(`next: kinetic probe ${lastPart}; kinetic view side --focus ${lastPart}`));
+  assert.doesNotMatch(failText.stdout, /last-part|--focus workbench/);
 
   const edit = cli('set', 'bridge', 'y=2.25', '--revision', '0');
   assert.equal(edit.changed, true);
