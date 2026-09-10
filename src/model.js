@@ -2,6 +2,7 @@
 /** @typedef {{version:1,revision:number,title:string,parts:Part[]}} Project */
 import { WorkshopError } from './errors.js';
 import { initialScene, validateScene, applySceneOperations, SCENE_RULES } from './scene-model.js';
+import { validateNativeProject, NATIVE_RULES } from './native-model.js';
 export { WorkshopError } from './errors.js';
 export const RULES = Object.freeze({
   gravity: -9.81, timestep: 1 / 120, duration: 10, radius: 0.22,
@@ -38,6 +39,7 @@ export function validatePart(part) {
   return clone(part);
 }
 export function validateProject(input) {
+  if (input?.version === 3) return validateNativeProject(input);
   if (input?.version === 2) return validateScene(input);
   if (!input || input.version !== 1 || !Array.isArray(input.parts)) throw new WorkshopError('INVALID_PROJECT', 'Expected a Kinetic version 1 project.');
   const allowed = ['version','revision','title','parts'];
@@ -56,6 +58,7 @@ function switchWorkspace(project,op) {
 export function applyOperations(project, operations) {
   if (!Array.isArray(operations) || !operations.length || operations.length > 20) throw new WorkshopError('INVALID_BATCH', 'Submit 1–20 typed operations.');
   if (operations.length === 1 && operations[0]?.type === 'workspace') return switchWorkspace(project,operations[0]);
+  if (project.version===3) throw new WorkshopError('NATIVE_SOURCE_EDIT','Edit the project source files, then use project apply with the inspected revision.');
   return project.version===2?applySceneOperations(project,operations):applyMarbleOperations(project,operations);
 }
 function applyMarbleOperations(project,operations) {
@@ -137,7 +140,7 @@ export class Workshop {
     this.feedback.push(note); return clone(note);
   }
   state() {
-    return { project: clone(this.project), rules: this.project.version===2?SCENE_RULES:RULES, attempts: clone(this.attempts), feedback: clone(this.feedback), canUndo: !!this.history.length, canRedo: !!this.future.length };
+    return { project: clone(this.project), rules: this.project.version===3?NATIVE_RULES:this.project.version===2?SCENE_RULES:RULES, attempts: clone(this.attempts), feedback: clone(this.feedback), canUndo: !!this.history.length, canRedo: !!this.future.length };
   }
   addRun(run) {
     this.lastRun = run;

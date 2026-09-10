@@ -46,3 +46,14 @@
 body[data-mode=scene] #parts{max-height:260px;overflow:auto}body[data-mode=scene] #replay-position{max-width:65%;max-height:70px;overflow:auto}body[data-mode=scene] .transport-divider{display:none}
 @media(max-width:760px){.workspace-choices{gap:12px;margin-top:0}.workspace-choices>span{display:none}.workspace-choices button{font-size:12px}.scene-settings{gap:8px}.scene-inspector input,.scene-settings input{min-height:38px}body[data-mode=scene] #replay-position{max-width:100%}}
 #solve[hidden]{display:none}
+
+.workspace[hidden],.run-journal[hidden],#native-workspace[hidden]{display:none}
+#native-workspace{display:grid;grid-template-columns:minmax(0,1fr) 304px;gap:20px;align-items:start}
+.native-stage{min-width:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#eceee6}
+#native-viewport{height:560px;position:relative}.native-frame{width:100%;height:100%;border:0;display:block}
+.native-transport{display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:1px solid var(--line);font-size:12px;flex-wrap:wrap}
+.native-sidebar{border:1px solid var(--line);border-radius:12px;padding:22px;background:#fcfbf7;min-width:0}
+.native-sidebar h2{font-family:Georgia,serif;font-weight:400;font-size:26px;overflow-wrap:anywhere}.native-sidebar label{display:block;margin:14px 0 8px;font-size:12px}.native-sidebar select{width:100%;margin-bottom:12px;padding:10px;font:inherit;border:1px solid var(--line);background:#fcfbf7;border-radius:6px}.native-sidebar textarea{font-size:14px}.native-sidebar .muted{overflow-wrap:anywhere}
+.native-validation{position:fixed;left:-1200px;top:0;width:960px;height:600px;visibility:hidden;pointer-events:none}
+#project-name{display:block;width:100%;padding:12px;margin-top:10px;border:1px solid var(--line);border-radius:6px;background:#fffef8;color:var(--ink);font:inherit}
+@media(max-width:800px){#native-workspace{grid-template-columns:1fr}#native-viewport{height:440px}.native-sidebar{padding:18px}.native-sidebar select,.native-sidebar textarea,#project-name{font-size:16px}.workspace-choices{flex-wrap:wrap}}

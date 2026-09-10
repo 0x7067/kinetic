@@ -20,7 +20,7 @@ module('three/core',read(files['three.core.js']));
 module('three',read(files['three.module.js']).replaceAll('./three.core.js','three/core'));
 module('@dimforge/rapier3d-compat',read(files['rapier.mjs']));
 for(const addon of ['controls/OrbitControls.js','geometries/RoundedBoxGeometry.js'])module(`three/addons/${addon}`,read(files[`addons/${addon}`]));
-for(const name of ['errors','scene-model','scene-geometry','scene-view','scene-physics','scene-ui','model','physics','solver','view','replay','replay-player','app'])module(`@kinetic/${name}`,read(`src/${name}.js`).replaceAll(/'\.\/([\w-]+)\.js'/g,"'@kinetic/$1'"));
+for(const name of ['errors','scene-model','scene-geometry','scene-view','scene-physics','scene-ui','native-model','native-ui','model','physics','solver','view','replay','replay-player','app'])module(`@kinetic/${name}`,read(`src/${name}.js`).replaceAll(/'\.\/([\w-]+)\.js'/g,"'@kinetic/$1'"));
 let html=read('index.html').replace('<link rel="stylesheet" href="./src/style.css" />',`<style>${read('src/style.css')}</style>`);
 html=html.replace(/<script type="importmap">[\s\S]*?<\/script>/,`<script type="importmap">${JSON.stringify({imports})}</script>`);
 html=html.replace('<script type="module" src="./src/app.js"></script>',"<script type=\"module\">import '@kinetic/app';</script>");

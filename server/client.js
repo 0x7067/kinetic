@@ -29,6 +29,7 @@ export function summarize(value, full = false) {
     delete data.frames; delete data.project;
   }
   if(!full&&data.project?.version===2)data.project={...data.project,parts:data.project.parts.map(compactPart)};
+  if(!full&&data.project?.version===3)data.project={...data.project,native:{...data.project.native,files:data.project.native.files.map(({path,encoding,content})=>({path,encoding,bytes:new TextEncoder().encode(content).length}))}};
   if(!full&&data.changes)data.changes=data.changes.map(c=>({...c,fields:c.fields&&Object.fromEntries(Object.entries(c.fields).map(([k,v])=>[k,['data','vertices','indices','points'].includes(k)?{before:payloadSummary(v.before),after:payloadSummary(v.after)}:v]))}));
   return { data, images };
 }
@@ -65,14 +66,10 @@ export function createClient(input) {
   }
   return {
     base, request,
-    async inspect(options = {}) { const state = await request('/api/inspect', options); return { ...state, analysis: analyzeScene(state.project) }; },
-    async probe(id) {
-      const state = await request('/api/state'); const analysis = analyzeScene(state.project);
-      const part = analysis.parts.find(p => p.id === id);
-      if (!part) throw new ClientError('NOT_FOUND', `Unknown part ${id}.`, `Available IDs: ${state.project.parts.map(p=>p.id).join(', ') || 'none'}.`);
-      return { revision: state.project.revision, part, gaps: analysis.gaps.filter(g=>g.from===id||g.to===id), goal:analysis.goal, cameraRecommendations:analysis.cameraRecommendations };
-    },
+    inspect: (options={}) => inspectProject(request,options),
+    probe: id => probeProject(request,id),
     edit: args => request('/api/edit', args),
+    project: (action,args={}) => request(`/api/project/${action}`,args),
     async run(args = {}) { const expectedRevision = args.expectedRevision ?? (await request('/api/state')).project.revision; return request('/api/run', { ...args, expectedRevision }); },
     view: options => request('/api/view', options),
     replay: options => request('/api/replay', options),
@@ -83,4 +80,17 @@ export function createClient(input) {
       return { ...data, images:data.feedback.filter(n=>n.screenshot).slice(0,3).map(n=>n.screenshot) };
     },
   };
+}
+async function inspectProject(request,options) {
+  const state=await request('/api/inspect',options);
+  return {...state,analysis:Object.hasOwn(state,'analysis')?state.analysis:analyzeScene(state.project)};
+}
+async function probeProject(request,id) {
+  let state=await request('/api/state');
+  if(state.project.version===3)state=await request('/api/inspect',{});
+  const analysis=state.project.version===3?state.analysis:analyzeScene(state.project);
+  if(!analysis)throw new ClientError('PREVIEW_UNAVAILABLE','Open the Kinetic browser for live native geometry.');
+  const part=analysis.parts.find(p=>p.id===id);
+  if(!part)throw new ClientError('NOT_FOUND',`Unknown part ${id}.`,`Available IDs: ${analysis.parts.map(p=>p.id).join(', ')||'none'}.`);
+  return {revision:state.project.revision,part,gaps:analysis.gaps.filter(g=>g.from===id||g.to===id),goal:analysis.goal,cameraRecommendations:analysis.cameraRecommendations};
 }

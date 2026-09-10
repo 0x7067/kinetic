@@ -56,7 +56,7 @@ Evidence: `evidence/showcase/marble-comparison.json`, `marble-comparison.jpg` an
 
 ## Recommended sequence
 
-Revised after the user's clarification on 10 September 2026: the goal is an agent-friendly interface to general Three.js projects and a stronger human feedback loop. [The product vision](VISION.md) supersedes the original inspector-first recommendation. The current showcase above remains an accurate description of v0.5.
+Revised after the user's clarification on 10 September 2026: the goal is an agent-friendly interface to general Three.js projects and a stronger human feedback loop. [The product vision](VISION.md) supersedes the original inspector-first recommendation. The showcase above records the original v0.5 foundation. The [native project guide](NATIVE-PROJECTS.md) describes the first implementation increment.
 
 ### 1. Create or open a native Three.js project
 
@@ -88,7 +88,7 @@ Use [Fly With Me](https://github.com/kunchenguid/fly-with-me) as the demanding c
 
 Have a fresh evaluator carry one human feedback request through source/parameter revision, comparable captures, human review and reopen. Measure missing capabilities, unsupported targets, retries, calls, frame consistency and actual resource use. Successful acceptance requires this loop to work across different project types without new core object kinds.
 
-These are proposed increments. The current blank v2 scene is available today; general Three.js project scaffolding, the native-project bridge and richer feedback UI remain to be implemented. No scheduled work or integration of Fly With Me is claimed by this planning update.
+The first implementation now covers source project creation, adapted existing projects, WebGL previews, source adoption, live inspection/capture, basic object feedback and portable source snapshots. Typed parameters, richer visual annotations/review, durable historical builds, additional dependencies/renderers and Fly With Me integration remain open. No scheduled work or completed integration of Fly With Me is claimed.
 
 ## Verification and limits
 

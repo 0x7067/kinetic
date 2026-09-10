@@ -2,7 +2,7 @@
 
 Kinetic should let people create the full range of things they can build with Three.js, with agents doing the implementation and humans directing the result through the visible work. Worlds, interactive experiences, models, diagrams, data visualizations, animations and physical experiments all belong here. The current marble and Bounce lab projects are examples, not the product boundary.
 
-This direction follows the user's clarification on 10 September 2026. It supersedes the inspector-first priorities in the initial showcase plan. The architecture below is proposed; the current v0.5 implementation still uses its fixed scene schema.
+This direction follows the user's clarification on 10 September 2026. It supersedes the inspector-first priorities in the initial showcase plan. The [first native bridge](NATIVE-PROJECTS.md) now creates source projects and supports a preview/inspect/feedback/revise/save loop alongside v1/v2 scenes. The broader architecture below remains the direction: typed parameters, richer visual annotations, explicit review decisions and wider runtime integration are still to come.
 
 ## The experience we are building
 

@@ -16,7 +16,7 @@ const spec = {
   run: ['revision','capture','view','focus','overlays'], view: ['focus','overlays'],
   set: ['revision','request-id'], batch: ['revision','request-id'],
   undo: ['revision'], redo: ['revision'], reset: ['revision'],
-  save: ['force'], import: ['revision'], feedback: [], doctor: [], serve: [], version: [], help: [],
+  save: ['force'], import: ['revision'], feedback: [], doctor: [], serve: [], version: [], help: [], project: ['revision'],
 };
 const usage = {
   new: 'kinetic new scene|demo|marble --revision N (undoable workspace switch)',
@@ -33,11 +33,13 @@ const usage = {
   save: 'kinetic save project.json [--force]', import: 'kinetic import project.json --revision N',
   feedback: 'kinetic feedback list | show ID | resolve ID [...]',
   doctor: 'kinetic doctor', serve: 'kinetic serve (foreground; PORT and KINETIC_DATA configure the service)',
+  project: 'kinetic project create NAME | open DIRECTORY | apply --revision N; kinetic project pause|resume',
 };
 const editFields = `Editable fields: name (1–60 characters, not blank), ${Object.entries(LIMITS).map(([field,[min,max]])=>`${field} (${min} to ${max})`).join(', ')}.
 Distances are metres, Y is up; angle (pitch) and yaw are degrees. Bounds are inclusive.
 Use IDs from inspect. An update cannot change id or kind. In the marble example, gravity, spawn, cup and rules are locked.`;
 const commandDetails = {
+  project: 'Create an ordinary Three.js source project and open its isolated preview.\ncreate NAME writes a new directory under KINETIC_PROJECTS (default: projects beside the service state). Existing files are preserved.\nopen DIRECTORY reads kinetic.project.json: version:1, title, entry and explicit files.\nEdit source locally, then apply --revision N. A connected browser validates the candidate before adoption; failed or stale candidates preserve the accepted project.\nThe entry exports createProject({canvas,THREE}) and returns {scene,camera,renderer,update(time,delta),dispose()}.\nKinetic supplies pinned Three.js and addons in the managed WebGL preview. Use inspect, probe, render, feedback and save normally. --full --json explicitly includes source.\nPause/resume controls live animation; it does not imply deterministic seek or physics.',
   new: `scene opens a blank general workspace; demo opens a mixed scene; marble opens the fixed challenge.
 Scenes accept up to 64 objects / 16 dynamic bodies. Kinds: ${SCENE_KINDS.join(', ')}.
 Use batch --help to create objects. render [iso|side|top] captures the current scene.
@@ -97,6 +99,7 @@ const help = `Kinetic ${VERSION} — a real-physics workshop for people and agen
 Core loop:
   kinetic                         Inspect current state
   kinetic new scene --revision N   Open a general workspace
+  kinetic project create NAME --revision N   Start a native Three.js source project
   kinetic new demo --revision N    Open a scene example
   kinetic render [iso|side|top]     Save a rendered PNG
   kinetic run                     Record optional physics
@@ -159,6 +162,7 @@ function parse() {
   const counts = {new:1,runs:0,replay:1,compare:2,inspect:0,run:0,doctor:0,serve:0,version:0,undo:0,redo:0,reset:0,probe:1,batch:1,save:1,import:1};
   if (command in counts && positional.length !== counts[command]) usageError(`Expected ${counts[command]} positional arguments for ${command}.`,command);
   if (command === 'set' && positional.length < 2) usageError('Supply a part ID and one or more field=value changes.',command);
+  if(command==='project')validateProjectCommand(positional,options);
   if (command === 'view' && (positional.length>1 || (positional[0]&&!['iso','side','top'].includes(positional[0])))) usageError('View must be iso, side or top.',command);
   if (['new','set','batch','undo','redo','reset','import'].includes(command) && options.revision === undefined) usageError('Supply the --revision reported by inspect. This prevents overwriting unseen edits.',command);
   if (command === 'feedback') {
@@ -170,6 +174,30 @@ function parse() {
 }
 function validateTemplate(template) {
   if(!['scene','demo','marble'].includes(template))usageError('Choose scene, demo or marble.','new');
+}
+function validateProjectCommand([action,...rest],options) {
+  const counts={create:1,open:1,apply:0,pause:0,resume:0};
+  if(!Object.hasOwn(counts,action)||rest.length!==counts[action])usageError('Use create NAME, open DIRECTORY, apply, pause or resume.','project');
+  const mutation=['create','open','apply'].includes(action);
+  if(mutation&&options.revision===undefined)usageError('Supply the inspected --revision.','project');
+  if(!mutation&&options.revision!==undefined)usageError('Live pause/resume does not accept --revision.','project');
+  if(action==='create'&&!/^[a-z][a-z0-9-]{0,49}$/.test(rest[0]))usageError('Project names use lowercase letters, numbers and hyphens.','project');
+}
+async function runProjectCommand(client,[action,target],options) {
+  const args={};
+  if(options.revision!==undefined)args.expectedRevision=Number(options.revision);
+  if(action==='create')args.name=target;
+  if(action==='open')args.directory=resolve(target);
+  const value=await client.project(action,args);
+  const text=value.inspection?`${action} | r${value.inspection.revision} | ${value.inspection.time.toFixed(2)} s`:`${action} | revision ${value.revision}\nsource: ${value.directory||'portable snapshot'}\nnext: edit source files, then kinetic project apply --revision ${value.revision}`;
+  return {value,text};
+}
+async function inspectHealth(client) {
+  const s=await client.request('/api/state');
+  const value={reachable:true,fixedGravity:s.project.version===1?s.rules.gravity===-9.81:null,stableIds:new Set(s.project.parts.map(p=>p.id)).size===s.project.parts.length,partsWithinBudget:s.project.parts.length<=(s.rules.maxParts??s.rules.maxInspectionObjects),revision:s.project.revision};
+  if(value.fixedGravity===false||!value.stableIds||!value.partsWithinBudget)throw new ClientError('INVARIANT_FAILED','The running workshop violates its declared constraints.');
+  const description=s.project.version===3?'native source project':`${s.project.parts.length}/${s.rules.maxParts} parts`;
+  return {value,text:`ok ${client.base.origin} | revision ${s.project.revision} | ${description}`};
 }
 const STRING_LIMITS={name:60,text:500,color:7,body:7};
 const EDIT_LIMITS={...LIMITS,...SCENE_LIMITS};
@@ -197,6 +225,7 @@ const n=(value,d=2)=>Number(value).toFixed(d);
 const xyz=p=>`(${n(p.x)}, ${n(p.y)}, ${n(p.z)})`;
 const contactText=c=>`${c.part}${c.surface?'/'+c.surface:''}@${n(c.time,4)}s${c.velocity?` vx=${n(c.velocity.x)}m/s`:''} normal=${c.normal?xyz(c.normal):'unavailable'}`;
 function inspectText(s) {
+  if(s.project.version===3)return [`native ${s.project.title} | revision ${s.project.revision} | ${s.project.native.files.length} source/asset files`,`source: ${s.nativeProject?.directory||'portable snapshot'}`,`preview: ${s.inspectionStatus||'unavailable'}`,...(s.analysis?.parts||[]).map(p=>`${p.id} [${p.type}] ${xyz(p.position)} | ${p.source}`),'next: edit source; kinetic project apply --revision '+s.project.revision+'; kinetic render'].join('\n');
   if(s.project.version===2)return [`scene ${s.project.title} | revision ${s.project.revision} | ${s.project.parts.length}/${s.rules.maxParts} objects`,...s.project.parts.map(p=>`${p.id} [${p.kind}] ${xyz(p)} | ${p.body} | ${p.name}`),`gravity ${s.project.settings.gravity.join(', ')} | duration ${s.project.settings.duration}s | no success criterion`,'next: kinetic batch --help; kinetic render; kinetic run'].join('\n');
   return [
     `revision ${s.project.revision} | ${s.project.parts.length}/${s.rules.maxParts} parts | undo ${s.canUndo?'yes':'no'} | redo ${s.canRedo?'yes':'no'}`,
@@ -210,6 +239,7 @@ function inspectText(s) {
 }
 function probeText(value) {
   const p=value.part,normal=p.topSurface?.normal||p.surfaceNormal,downhill=p.topSurface?.downhill||p.downhill;
+  if(p.kind==='native')return `${p.id}: ${p.name} @ revision ${value.revision}\nsource ${p.source}\nposition ${xyz(p.position)}\n${p.bounds?`bounds ${xyz(p.bounds.min)} -> ${xyz(p.bounds.max)}`:'No finite geometry bounds'}\nnext: kinetic render side --focus ${p.id}`;
   return [
     `${p.id}: ${p.name} @ revision ${value.revision}`,
     `position ${xyz(p.transform.position)} pitch=${p.transform.angleDeg}° yaw=${p.transform.yawDeg}°`,
@@ -269,6 +299,8 @@ async function main() {
     value=await client.edit({operations,expectedRevision:Number(o.revision),requestId});
     value.requestId=requestId;
     text=`${value.replayed?'replayed':value.changed?'changed':'unchanged'} | revision ${value.revision} | request-id ${requestId}\n${command==='set'?`${a[0]} ${a.slice(1).join(' ')}`:`${operations.length} operations`}\nnext: kinetic run --revision ${value.revision}`;
+  } else if(command==='project') {
+    ({value,text}=await runProjectCommand(client,a,o));
   } else if(['undo','redo','reset'].includes(command)) {
     value=await client.request(`/api/${command}`,{expectedRevision:Number(o.revision)});
     text=`${command}: ${value.changed===false?'no change':'applied'} | revision ${value.revision??value.project.revision}`;
@@ -280,9 +312,7 @@ async function main() {
   } else if(command==='import') {
     value=await client.request('/api/import',{expectedRevision:Number(o.revision),project:readJSON(a[0])});text=`imported | revision ${value.project.revision}`;
   } else if(command==='doctor') {
-    const s=await client.request('/api/state');value={reachable:true,fixedGravity:s.project.version===1?s.rules.gravity===-9.81:null,stableIds:new Set(s.project.parts.map(p=>p.id)).size===s.project.parts.length,partsWithinBudget:s.project.parts.length<=s.rules.maxParts,revision:s.project.revision};
-    text=`ok ${client.base.origin} | revision ${s.project.revision} | ${s.project.parts.length}/${s.rules.maxParts} parts`;
-    if(value.fixedGravity===false||!value.stableIds||!value.partsWithinBudget)throw new ClientError('INVARIANT_FAILED','The running workshop violates its declared constraints.');
+    ({value,text}=await inspectHealth(client));
   } else if(command==='feedback') {
     const action=a[0]||'list';value=await client.feedback(action==='resolve'?a.slice(1):undefined);
     if(action==='show') { const note=value.feedback.find(n=>n.id===a[1]);if(!note)throw new ClientError('NOT_FOUND','No pending feedback with that ID.','kinetic feedback list');value={feedback:[note],images:note.screenshot?[note.screenshot]:[]}; }

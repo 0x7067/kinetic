@@ -17,7 +17,8 @@
     "build": "node scripts/build.js",
     "verify": "npm test && npm run build",
     "test:replay": "python tests/replay-browser.py",
-    "test:scene": "python tests/scene-browser.py"
+    "test:scene": "python tests/scene-browser.py",
+    "test:native": "python tests/native-browser.py"
   },
   "engines": {
     "node": ">=22"
