@@ -8,7 +8,7 @@ Use Three.js for world-space reasoning as well as rendering. Structured inspecti
 
 Run `npm test`, `npm run build`, and `python tests/browser.py`. Also exercise the CLI and external stdio MCP client against a live local service. Inspect actual desktop/mobile screenshots, not only exit codes. Preserve failing evidence while diagnosing. Never relabel missing screenshots or incomplete tests as success.
 
-All part edits go through Workshop validation/history. A project owns its scene objects. Rapier is opt-in: skip it when there is no dynamic body. A dwell-sensor judge is optional; without one, a completed run reports `success: null` and `status: 'completed'`. The renderer replays recorded results; it cannot decide that the simulation succeeded. Auto-tune is local search and must be labeled accordingly, never as an AI model.
+All part edits go through Workshop validation/history. A project owns its scene objects. Rapier is opt-in: skip it when there is no dynamic body. A dwell-sensor judge is optional; without one, a completed run reports `success: null` and `status: 'completed'`. Cup `x`/`z` are honored; cup Y translation is unsupported this slice (default `cup.y` must remain 0.6; floor/walls/sensor Y and the dwell gate stay hardcoded). The renderer replays recorded results; it cannot decide that the simulation succeeded. Auto-tune is local search and must be labeled accordingly, never as an AI model.
 
 Keep HTTP loopback-only with Host/Origin validation. No arbitrary code tools. Bound operations, feedback size, runs, history, and solver retries. Do not let a stale agent overwrite a newer human edit. Preserve persistent IDs through save/import/undo. A feedback resolution is not human approval.
 

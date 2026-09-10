@@ -6,7 +6,7 @@ Keep build → run → observe → revise → save small. CLI first; MCP remains
 
 Projects may carry optional `world` and `judge`. Parts may set `collider`. `maxParts: 3` is no longer a World-type rule; the engine budget is 12 parts and 16 world objects. Current version-1 ramp JSON still validates: missing `world` hydrates the marble-cup composition so existing layouts keep their dwell-sensor.
 
-Rapier runs only when a dynamic body is in the document. Workbench, cup and marble are created only from that document. A missing judge yields `success: null` and `status: 'completed'`. `examples/two-boxes.json` is two meshes, one light and one camera with no marble, cup or judge.
+Rapier runs only when a dynamic body is in the document. Workbench, cup and marble are created only from that document. A missing judge yields `success: null` and `status: 'completed'`. `examples/two-boxes.json` is two meshes, one light and one camera with no marble, cup or judge. Cup `x`/`z` are honored; cup Y translation is unsupported this slice and rejected unless `cup.y` is the fixture default (0.6). Floor, walls, sensor Y and the dwell gate (`position.y < 0.88`) stay hardcoded.
 
 Local verification of this slice: `npm test` — Node tests passed, including marble fail-then-succeed after `bridge.y=2.25`, two-boxes inspect/edit/save/run with `success: null`, collider opt-in, fail-closed judge IDs, null-safe compare, and `run_js` still rejected. `npm run build` produced the static/offline bundle. Browser and live MCP suites were not re-run in this environment.
 

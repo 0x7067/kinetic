@@ -83,6 +83,7 @@ export class WorkbenchView {
     const ring=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.018,8,40),this.material(palette.coral));ring.rotation.x=Math.PI/2;ring.position.set(start.x,start.y+0.12,start.z);g.add(ring);
   }
   buildCup() {
+    // cup.x/cup.z are honored. cup.y is unsupported this slice; visual Y stays at the fixture constants.
     const g=this.staticGroup, cup=this.worldObject('cup'), x=cup?.x ?? RULES.goal.x, z=cup?.z ?? RULES.goal.z;
     this.cylinder(g,0.93,0.25,0xc9bfa6,x,0.08,z);
     this.cylinder(g,0.75,0.32,palette.cream,x,0.2,z);

@@ -125,6 +125,12 @@ test('judge body and target IDs must exist in the world',()=>{
   assert.throws(()=>validateProject({...p,judge:{type:'dwell-sensor',body:'marble',target:'missing'}}),/Judge target/);
   assert.throws(()=>validateProject({...p,judge:{type:'dwell-sensor',body:'marble',target:'launch'}}),/Judge target/);
 });
+test('cup.y offsets are rejected; the marble fixture default still validates',()=>{
+  const p=initialProject();
+  assert.equal(validateProject(p).world.objects.find(o=>o.kind==='cup').y,RULES.goal.y);
+  const offset={...p,world:{objects:p.world.objects.map(o=>o.kind==='cup'?{...o,y:1.2}:o)}};
+  assert.throws(()=>validateProject(offset),/Cup Y translation is unsupported/);
+});
 test('a collider:false marble does not start Rapier even when a judge is present',async()=>{
   const p=initialProject();
   p.world.objects=p.world.objects.map(o=>o.kind==='marble'?{...o,collider:false}:o);

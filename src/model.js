@@ -81,6 +81,10 @@ function validateWorldObject(object) {
   for (const key of ['x', 'y', 'z']) finiteIn(object[key], WORLD_LIMITS[key], key);
   if (object.collider !== undefined && typeof object.collider !== 'boolean') throw new WorkshopError('INVALID_COLLIDER', 'collider must be a boolean.');
   if (object.kind === 'light' && object.intensity !== undefined) finiteIn(object.intensity, [0, 20], 'intensity');
+  // cup.x/cup.z move the collider; cup.y translation is unsupported this slice.
+  if (object.kind === 'cup' && object.y !== RULES.goal.y) {
+    throw new WorkshopError('UNSUPPORTED', `Cup Y translation is unsupported this slice; cup.y must be ${RULES.goal.y}.`);
+  }
   const next = clone(object);
   if (next.collider === undefined) delete next.collider;
   return next;

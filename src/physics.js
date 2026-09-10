@@ -51,7 +51,7 @@ export function buildColliders(world, project, names, surfaces) {
   let sensor = null;
   const goal = cup ? { x: cup.x, y: cup.y, z: cup.z } : null;
   if (cup && goal) {
-    // The cup is a real solid floor and polygonal wall, not a visual success shortcut.
+    // cup.x/cup.z are honored. cup.y is unsupported this slice: floor, walls, sensor Y, and the dwell gate stay hardcoded.
     add(RAPIER.ColliderDesc.cylinder(0.16, 0.75).setTranslation(goal.x, 0.2, goal.z).setFriction(0.8).setRestitution(0), ensureBase(), 'cup', 'cup-floor');
     for (let i = 0; i < 24; i++) {
       const a = i * Math.PI * 2 / 24;

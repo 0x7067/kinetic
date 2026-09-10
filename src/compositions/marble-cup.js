@@ -8,6 +8,7 @@ export const MARBLE_PARTS = Object.freeze([
 export const MARBLE_WORLD = Object.freeze({
   objects: Object.freeze([
     Object.freeze({ id: 'workbench', kind: 'workbench', name: 'Workbench', x: 0, y: -0.2, z: 0 }),
+    // cup.x/cup.z are honored; cup.y is the fixture default (0.6) and Y translation is unsupported this slice.
     Object.freeze({ id: 'cup', kind: 'cup', name: 'Cup', x: 5.45, y: 0.6, z: 0 }),
     Object.freeze({ id: 'marble', kind: 'marble', name: 'Marble', x: -5.5, y: 4.65, z: 0 }),
   ]),
