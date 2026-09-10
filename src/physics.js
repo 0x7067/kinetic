@@ -8,18 +8,25 @@ export function rotation(part) {
 }
 function round(n) { return Math.round(n * 10000) / 10000; }
 function point(p) { return { x: round(p.x), y: round(p.y), z: round(p.z) }; }
-function identityFrame(t = 0) {
-  return { t, x: 0, y: 0, z: 0, q: [0, 0, 0, 1], vx: 0, vy: 0, vz: 0, speed: 0 };
+function poseFrame(object, t = 0) {
+  const p = object ? point(object) : { x: 0, y: 0, z: 0 };
+  return { t, ...p, q: [0, 0, 0, 1], vx: 0, vy: 0, vz: 0, speed: 0 };
+}
+function restPose(project) {
+  const marble = (project.world?.objects || []).find(o => o.kind === 'marble');
+  const frame = poseFrame(marble);
+  return { end: { x: frame.x, y: frame.y, z: frame.z }, frames: [frame] };
 }
 function completedRun(project, extra = {}) {
   const elapsed = extra.duration ?? 0;
+  const rest = restPose(project);
   return {
     id: uid(), revision: project.revision, status: extra.status ?? 'completed', success: extra.success ?? null,
     duration: round(elapsed), closest: extra.closest ?? null, closestPoint: extra.closestPoint ?? null, closestTime: extra.closestTime ?? null,
-    maxSpeed: extra.maxSpeed ?? 0, end: extra.end ?? { x: 0, y: 0, z: 0 }, endDistanceToGoal: extra.endDistanceToGoal ?? null,
+    maxSpeed: extra.maxSpeed ?? 0, end: extra.end ?? rest.end, endDistanceToGoal: extra.endDistanceToGoal ?? null,
     missVector: extra.missVector ?? null, targetError: extra.targetError ?? null, contacts: extra.contacts ?? [],
     message: extra.message ?? 'Simulation completed. No judge is attached.',
-    frames: extra.frames ?? [identityFrame(0)], project, createdAt: extra.createdAt ?? new Date().toISOString(),
+    frames: extra.frames ?? rest.frames, project, createdAt: extra.createdAt ?? new Date().toISOString(),
   };
 }
 function findObject(project, id) {

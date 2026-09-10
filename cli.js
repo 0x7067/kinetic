@@ -173,7 +173,7 @@ async function main() {
   } else if(command==='run') {
     value=await client.run({...(o.revision===undefined?{}:{expectedRevision:Number(o.revision)}),capture:!!o.capture,...(o.capture?{view}:{})});
     const outcome=value.success===true?'SUCCESS':value.success===null?'COMPLETED':'FAIL';
-    text=`${outcome} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\n${value.closest==null?'no judge':`closest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}`}\ncontacts ${value.contacts.map(c=>`${c.part}${c.surface?'/'+c.surface:''}@${n(c.time)}s${c.velocity?` vx=${n(c.velocity.x)}m/s`:''}`).join(', ')||'none'}\n${value.message}\nnext: ${value.success===true?'kinetic save working-project.json':'kinetic probe <id>; kinetic view side --focus <id>'}`;
+    text=`${outcome} ${value.status} | run ${value.id} | revision ${value.revision} | ${n(value.duration)}s\n${value.closest==null?`no goal distance; end ${xyz(value.end)}`:`closest ${n(value.closest)}m to cup centre; end ${xyz(value.end)}`}\ncontacts ${value.contacts.map(c=>`${c.part}${c.surface?'/'+c.surface:''}@${n(c.time)}s${c.velocity?` vx=${n(c.velocity.x)}m/s`:''}`).join(', ')||'none'}\n${value.message}\nnext: ${value.success===true?'kinetic save working-project.json':'kinetic probe <id>; kinetic view side --focus <id>'}`;
   } else if(command==='view') { value=await client.view({...view,mode:a[0]||'iso'});text=`view ${a[0]||'iso'} | focus ${o.focus||'scene'} | overlays ${o.overlays?'on':'off'}`; }
   else if(command==='set'||command==='batch') {
     const requestId=o['request-id']||crypto.randomUUID();

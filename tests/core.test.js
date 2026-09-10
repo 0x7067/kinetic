@@ -131,14 +131,23 @@ test('cup.y offsets are rejected; the marble fixture default still validates',()
   const offset={...p,world:{objects:p.world.objects.map(o=>o.kind==='cup'?{...o,y:1.2}:o)}};
   assert.throws(()=>validateProject(offset),/Cup Y translation is unsupported/);
 });
-test('a collider:false marble does not start Rapier even when a judge is present',async()=>{
+test('a judge requires colliding body and target',()=>{
   const p=initialProject();
-  p.world.objects=p.world.objects.map(o=>o.kind==='marble'?{...o,collider:false}:o);
-  const validated=validateProject(p);
-  assert.equal(validated.judge.type,'dwell-sensor');
-  const run=await simulate(validated);
+  assert.throws(()=>validateProject({...p,world:{objects:p.world.objects.map(o=>o.kind==='marble'?{...o,collider:false}:o)}}),/Judge body must have a collider/);
+  assert.throws(()=>validateProject({...p,world:{objects:p.world.objects.map(o=>o.kind==='cup'?{...o,collider:false}:o)}}),/Judge target must have a collider/);
+});
+test('skipping Rapier keeps a collider:false marble at its document pose',async()=>{
+  const p=initialProject();
+  const ghost=validateProject({version:1,revision:0,title:'Ghost marble',parts:[],world:{objects:p.world.objects.map(o=>o.kind==='marble'?{...o,collider:false}:o)}});
+  assert.equal(ghost.judge,undefined);
+  const run=await simulate(ghost);
   assert.equal(run.success,null);
   assert.equal(run.status,'completed');
   assert.equal(run.contacts.length,0);
-  assert.ok(!run.frames.some(f=>f.x===RULES.start.x&&f.y===RULES.start.y));
+  assert.equal(run.frames[0].x,RULES.start.x);
+  assert.equal(run.frames[0].y,RULES.start.y);
+  assert.equal(run.frames[0].z,RULES.start.z);
+  assert.equal(run.end.x,RULES.start.x);
+  assert.equal(run.end.y,RULES.start.y);
+  assert.equal(run.end.z,RULES.start.z);
 });

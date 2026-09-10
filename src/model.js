@@ -129,8 +129,10 @@ export function validateProject(input) {
     const target = world.objects.find(o => o.id === judge.target);
     if (!body) throw new WorkshopError('INVALID_JUDGE', `Judge body ${judge.body} is not in this project.`);
     if (body.kind !== 'marble') throw new WorkshopError('INVALID_JUDGE', 'Judge body must name a marble.');
+    if (!worldObjectCollides(body)) throw new WorkshopError('INVALID_JUDGE', 'Judge body must have a collider.');
     if (!target) throw new WorkshopError('INVALID_JUDGE', `Judge target ${judge.target} is not in this project.`);
     if (target.kind !== 'cup') throw new WorkshopError('INVALID_JUDGE', 'Judge target must name a cup.');
+    if (!worldObjectCollides(target)) throw new WorkshopError('INVALID_JUDGE', 'Judge target must have a collider.');
   }
   const project = { version: 1, revision: input.revision, title: input.title, parts, world };
   if (judge) project.judge = judge;
