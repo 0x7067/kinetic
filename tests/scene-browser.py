@@ -47,6 +47,23 @@ with tempfile.TemporaryDirectory(prefix='kinetic-scene-browser-') as directory:
                 page.locator('#demo-scene').click();page.wait_for_function('window.kinetic.getState().project.parts.length===7')
                 page.evaluate('window.kinetic.view.waitForAssets()')
                 check('Scene example mixes physical objects, text, an arrow and a plot',page.locator('.part').count()==7)
+                rest=page.evaluate("() => { window.kinetic.view.reset(); window.kinetic.view.setCamera('iso'); window.kinetic.view.capture({mode:'iso'}); return window.kinetic.view.lastCapture.camera; }")
+                escaped=page.evaluate("""() => {
+                  const ball=window.kinetic.view.meshes.find(g=>g.userData.partId==='ball');
+                  const y=ball.position.y;
+                  ball.position.y=-80;ball.updateMatrixWorld(true);
+                  window.kinetic.view.capture({mode:'iso'});
+                  const unfocused={...window.kinetic.view.lastCapture.camera,position:window.kinetic.view.lastCapture.camera.position.slice()};
+                  window.kinetic.view.capture({mode:'iso',focus:'ball'});
+                  const focused={...window.kinetic.view.lastCapture.camera,position:window.kinetic.view.lastCapture.camera.position.slice()};
+                  ball.position.y=y;ball.updateMatrixWorld(true);
+                  const human=window.kinetic.view.cameraState();
+                  return {unfocused,focused,human};
+                }""")
+                check('Unfocused iso capture keeps authored rest framing after the ball leaves',abs(escaped['unfocused']['zoom']-rest['zoom'])<.02 and abs(escaped['unfocused']['position'][1]-rest['position'][1])<.2)
+                check('Focus still tight-crops an escaped ball',escaped['focused']['zoom']>escaped['unfocused']['zoom']*2)
+                check('Direct view.capture does not move the human camera',escaped['human']==page.evaluate('window.kinetic.view.cameraState()'))
+                page.screenshot(path=str(OUT/'demo-iso-authored.png'),full_page=True)
                 batch([{'type':'configure','settings':{'duration':2}}])
                 page.locator('#object-kind').select_option('box');page.locator('#add-object').click()
                 page.wait_for_function('window.kinetic.getState().project.parts.length===8')

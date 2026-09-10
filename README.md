@@ -38,7 +38,7 @@ Replace `N` with the revision from `inspect` and run IDs with those returned by 
 
 Edits require an inspected revision and never silently overwrite a newer human edit. Batches commit together in one undo step or reject together. Retry uncertain edits with the same request ID and identical payload. `save` creates missing parent directories and requires `--force` to replace an existing file.
 
-Default output is compact. `--json` exposes structured facts; `--full --json` explicitly includes large geometry, embedded assets or full traces. Three.js computes world transforms, bounds, local axes and useful camera poses. Captures return actual PNG files and require an open browser; missing or undecodable images are reported explicitly. Remote captures preserve the human's camera and replay position.
+Default output is compact. `--json` exposes structured facts; `--full --json` explicitly includes large geometry, embedded assets or full traces. Three.js computes world transforms, bounds, local axes and useful camera poses. Captures return actual PNG files and require an open browser; missing or undecodable images are reported explicitly. Default iso, side and top captures frame authored rest poses; `--focus ID` tight-crops that live object. Remote captures that omit a view mode preserve the human's camera and replay position.
 
 ## Create, simulate and review
 

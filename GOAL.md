@@ -1,5 +1,20 @@
 # Kinetic — general workshop checkpoint
 
+## Authored-rest default framing — 10 September 2026
+
+Ship A on `kin-next-from-v05-1`, started from current main `2e08e49803def79e303167abe93953c59ff10f65` (v0.5.0). Do not revive `kin-scene-first-1` / PR #1. Default iso/side/top cameras and unfocused captures frame authored document transforms rather than live/replay world matrices. `--focus ID` still tight-crops the live object, including an escaped sample. Remote captures that omit `mode` still preserve the human camera. Sphere padding is tighter: zoom uses `radius * 1.08` and camera distance `max(3, r*2)` instead of `1.22` / `max(6, r*3)`. Marble v1 unfocused captures still use the parts group plus start/goal. Failed marble CLI hints now name the last real part ID (not `<last-part>` or workbench). Inspector UI, MCP export, run persistence, physics catalog expansion, PR #1, new views and plot-label redraw remain out of scope.
+
+Completed checks:
+
+- `npm test`: **90/90 passed**, including authored-rest vs live-matrix framing, demo iso containment for plot/heading/floor, escaped-body default frustum vs `--focus ball`, and the marble fail-hint ID.
+- `npm run build`: static and standalone output passed; standalone **6.55 MB**.
+- `python3 tests/browser.py`: **35/35 passed**, plus external stdio MCP **5 actual PNGs**. Zero page exceptions.
+- `python3 tests/replay-browser.py`: **24/24 passed**. Zero page exceptions.
+- `python3 tests/scene-browser.py`: **24/24 passed** (was 21; added authored-rest iso after an escaped ball, tight `--focus ball`, and human-camera preservation for `view.capture`). External stdio MCP **5 actual scene PNGs**. Zero page exceptions.
+- Actual demo iso screenshot inspected: `evidence/general-browser/demo-iso-authored.png` keeps the plot, “Motion & meaning” heading and floor readable. CLI side capture of the later expanded scene also keeps those labels readable.
+
+Current limits unchanged: 64 objects, 16 dynamic bodies, 1 MB documents, ten-second simulation, bounded embedded PNGs; custom meshes remain visual, plots show supplied data, and no arbitrary code/forces/joints/imported 3D formats are provided. MCP complete-project export remains CLI/browser-only. Runs and undo history reset on restart. Whole-scene chart labels and the compact inspector remain follow-up work. No Safari/iPhone or hardware-performance certification. This branch is pushed for crewmate review; no pull request is opened here.
+
 ## Push checkpoint — 10 September 2026
 
 The user authorized pushing local `main` to `origin` (`https://github.com/0x7067/kinetic.git`). GitHub repository and branch were checked through `gh-axi`; remote main was `baa153eb879961f3e7eb88f8d6f31ceb2e053cad`, an ancestor of the verified workshop. The working tree was clean. Since the full checks below, only GOAL.md checkpoint notes changed; application source and its evidence remain identical to `eceb7a3`. No tests were repeated for these documentation-only notes. Remote branch confirmation is retained in `evidence/general-final/push-verification.txt`; existing runtime limitations remain unchanged.

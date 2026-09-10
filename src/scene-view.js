@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { createSceneObject } from './scene-geometry.js';
+import { RULES } from './model.js';
+import { createSceneObject, sceneBounds } from './scene-geometry.js';
 
 function textCanvas(p) {
   const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=Math.max(128,Math.min(1024,Math.round(1024*p.height/p.width)));
@@ -53,11 +54,28 @@ export function buildSceneObjects(partsGroup,diagnostics,project) {
 export function applyObjectFrames(objects,frame) {
   for(const g of objects){const p=frame.objects[g.userData.partId];if(p){g.position.set(p.x,p.y,p.z);g.quaternion.fromArray(p.q);g.updateMatrixWorld(true);}}
 }
+function emptyFrameBox() { return new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(),new THREE.Vector3(8,8,8)); }
+/** Unfocused iso/side/top cameras use authored document transforms, not live/replay world matrices. */
+export function captureFrameBox(project,group,focus) {
+  if(focus){
+    const target=group?.children.find(m=>m.userData.partId===focus);
+    if(!target)throw new Error('Unknown capture focus: '+focus);
+    return new THREE.Box3().setFromObject(target);
+  }
+  if(project.version===2){
+    const {bounds}=sceneBounds(project);
+    return bounds.isEmpty()?emptyFrameBox():bounds;
+  }
+  const box=new THREE.Box3().setFromObject(group);
+  box.expandByPoint(new THREE.Vector3(RULES.start.x,RULES.start.y,RULES.start.z));
+  box.expandByPoint(new THREE.Vector3(RULES.goal.x,RULES.goal.y,RULES.goal.z));
+  return box.isEmpty()?emptyFrameBox():box;
+}
 export function frameCamera(camera,box,mode) {
   const sphere=box.getBoundingSphere(new THREE.Sphere()),target=sphere.center;
   const direction=new THREE.Vector3(...(mode==='top'?[0,1,.001]:mode==='side'?[0,0,1]:[1,.8,1])).normalize();
-  camera.position.copy(target).addScaledVector(direction,Math.max(6,sphere.radius*3));camera.up.set(0,1,0);camera.lookAt(target);
+  camera.position.copy(target).addScaledVector(direction,Math.max(3,sphere.radius*2));camera.up.set(0,1,0);camera.lookAt(target);
   camera.far=Math.max(100,sphere.radius*8+10);
-  camera.zoom=Math.min((camera.top-camera.bottom)/2,(camera.right-camera.left)/2)/Math.max(.9,sphere.radius*1.22);
+  camera.zoom=Math.min((camera.top-camera.bottom)/2,(camera.right-camera.left)/2)/Math.max(.9,sphere.radius*1.08);
   return target;
 }

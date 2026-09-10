@@ -33,7 +33,7 @@ node cli.js replay RUN_ID --at 1.5 --capture --view side
 node cli.js save gravity-study.json
 ```
 
-Use the returned run ID. Captures need a connected browser. The example plot is supplied data, not a measurement of this ball. Actual recorded body positions, velocities and contacts are available through `run` and `replay`; an agent can turn measured samples into plot points explicitly.
+Use the returned run ID. Captures need a connected browser. Default iso/side/top captures frame the authored rest poses, so a body that has left the layout does not empty the frustum; `--focus ID` still close-crops the live object. The example plot is supplied data, not a measurement of this ball. Actual recorded body positions, velocities and contacts are available through `run` and `replay`; an agent can turn measured samples into plot points explicitly.
 
 ## Objects and coordinates
 

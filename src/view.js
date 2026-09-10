@@ -3,15 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RULES } from './model.js';
 import { createSceneObject } from './scene-geometry.js';
-import { buildSceneObjects, applyObjectFrames, frameCamera } from './scene-view.js';
+import { buildSceneObjects, applyObjectFrames, frameCamera, captureFrameBox } from './scene-view.js';
 
 const palette = { ink: 0x273e39, coral: 0xd87250, teal: 0x408a7f, cream: 0xeee8d8, gold: 0xedb84d, board: 0xdbe3d9 };
-function captureBounds(partsGroup,project,focus) {
-  if(focus){const target=partsGroup.children.find(m=>m.userData.partId===focus);if(!target)throw new Error('Unknown capture focus: '+focus);return new THREE.Box3().setFromObject(target);}
-  const box=new THREE.Box3().setFromObject(partsGroup);
-  if(project.version===1){box.expandByPoint(new THREE.Vector3(RULES.start.x,RULES.start.y,RULES.start.z));box.expandByPoint(new THREE.Vector3(RULES.goal.x,RULES.goal.y,RULES.goal.z));}
-  if(box.isEmpty())box.setFromCenterAndSize(new THREE.Vector3(),new THREE.Vector3(8,8,8));return box;
-}
 export class WorkbenchView {
   constructor(host, onSelect) {
     this.host = host; this.onSelect = onSelect; this.meshes = []; this.selectedId = null; this.trailPoints = [];
@@ -219,7 +213,7 @@ export class WorkbenchView {
     if(frame.objects){applyObjectFrames(this.comparison.children,frame);return;}
     if(this.ghostMarble){this.ghostMarble.position.set(frame.x,frame.y,frame.z);this.ghostMarble.quaternion.fromArray(frame.q);}
   }
-  setCamera(mode) { this.camera.zoom=1;this.camera.position.set(...(mode==='top'?[0,18,0.01]:mode==='side'?[0,4,19]:[9,10,13]));this.controls.target.set(0,1.5,0);if(this.currentProject?.version===2){this.controls.target.copy(frameCamera(this.camera,captureBounds(this.partsGroup,this.currentProject),mode));this.controls.minZoom=.03;}this.camera.lookAt(this.controls.target);this.camera.updateProjectionMatrix();this.controls.update(); }
+  setCamera(mode) { this.camera.zoom=1;this.camera.position.set(...(mode==='top'?[0,18,0.01]:mode==='side'?[0,4,19]:[9,10,13]));this.controls.target.set(0,1.5,0);if(this.currentProject?.version===2){this.controls.target.copy(frameCamera(this.camera,captureFrameBox(this.currentProject,this.partsGroup),mode));this.controls.minZoom=.03;}this.camera.lookAt(this.controls.target);this.camera.updateProjectionMatrix();this.controls.update(); }
   cameraState() { return { position:this.camera.position.toArray(),target:this.controls.target.toArray(),zoom:this.camera.zoom }; }
   restoreCamera(value) { if(!value)return;this.camera.position.fromArray(value.position);this.controls.target.fromArray(value.target);this.camera.zoom=value.zoom||1;this.camera.updateProjectionMatrix();this.controls.update(); }
   capture(options = {}) {
@@ -228,7 +222,7 @@ export class WorkbenchView {
     const camera=this.camera.clone();
     const scale=Math.min(1,960/originalSize.x,720/originalSize.y);
     const width=Math.max(1,Math.round(originalSize.x*scale)),height=Math.max(1,Math.round(originalSize.y*scale));
-    if(options.mode || options.focus)frameCamera(camera,captureBounds(this.partsGroup,this.currentProject,options.focus),options.mode);
+    if(options.mode || options.focus)frameCamera(camera,captureFrameBox(this.currentProject,this.partsGroup,options.focus),options.mode);
     camera.updateProjectionMatrix(); camera.updateMatrixWorld();
     try {
       this.selection.visible=false;this.diagnostics.visible=!!options.overlays;this.comparison.visible=false;this.velocityArrow.visible=motion&&!!options.overlays;
