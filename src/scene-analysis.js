@@ -27,6 +27,21 @@ function localBounds(part) {
       new THREE.Vector3(part.length / 2, 0.35, 0.57),
     );
   }
+  if (part.kind === 'workbench') {
+    // Rapier cuboid(8, 0.2, 4.4) half-extents at the document workbench pose.
+    return new THREE.Box3(new THREE.Vector3(-8, -0.2, -4.4), new THREE.Vector3(8, 0.2, 4.4));
+  }
+  if (part.kind === 'marble') {
+    const r = RULES.radius;
+    return new THREE.Box3(new THREE.Vector3(-r, -r, -r), new THREE.Vector3(r, r, r));
+  }
+  if (part.kind === 'cup') {
+    // Rapier cup-floor cylinder(0.16, 0.75) at y=0.2; wall cuboids (0.055, 0.33, 0.108) at y=0.61.
+    const radius = 0.75;
+    const minY = 0.2 - 0.16 - RULES.goal.y;
+    const maxY = 0.61 + 0.33 - RULES.goal.y;
+    return new THREE.Box3(new THREE.Vector3(-radius, minY, -radius), new THREE.Vector3(radius, maxY, radius));
+  }
   if (part.length == null) {
     return new THREE.Box3(new THREE.Vector3(-0.12, -0.12, -0.12), new THREE.Vector3(0.12, 0.12, 0.12));
   }

@@ -32,6 +32,19 @@ test('empty scene facts are explicit',()=>{
   const p=initialProject();p.parts=[];p.world={objects:[]};delete p.judge;
   const a=analyzeScene(p);assert.equal(a.sceneBounds,null);assert.deepEqual(a.cameraRecommendations,[]);
 });
+test('world object bounds match Rapier collider extents',()=>{
+  const p=initialProject();
+  const byKind=Object.fromEntries(analyzeScene(p).objects.map(o=>[o.kind,o]));
+  assert.deepEqual(byKind.workbench.bounds.size,{x:16,y:0.4,z:8.8});
+  assert.deepEqual(byKind.workbench.bounds.center,{x:0,y:-0.2,z:0});
+  assert.deepEqual(byKind.marble.bounds.size,{x:0.44,y:0.44,z:0.44});
+  assert.deepEqual(byKind.marble.bounds.center,RULES.start);
+  assert.equal(byKind.cup.bounds.size.x,1.5);
+  assert.equal(byKind.cup.bounds.size.z,1.5);
+  assert.equal(byKind.cup.bounds.size.y,0.9);
+  assert.equal(byKind.cup.bounds.min.y,0.04);
+  assert.equal(byKind.cup.bounds.max.y,0.94);
+});
 test('partsless marble-cup still has scene bounds from world objects',()=>{
   const p=initialProject();p.parts=[];
   const a=analyzeScene(p);
