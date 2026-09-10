@@ -7,10 +7,11 @@ import { propose, score, restoreOperations } from './solver.js';
 import { WorkbenchView } from './view.js';
 import { ReplayPlayer } from './replay-player.js';
 import { sampleRun, compareRuns } from './replay.js';
+import { NativeWorkspace } from './native-ui.js';
 const $=selector=>document.querySelector(selector);
 const escape=escapeHTML;
 let state,selected='bridge',busy=false,solving=false,stopSolver=false,remote=false,local,view,lastRun=null,muted=true,audio=null;
-let source=null, config=null, savedError=null, player=null, comparisonRun=null;
+let source=null, config=null, savedError=null, player=null, comparisonRun=null, nativeWorkspace=null;
 const runCache=new Map();
 function cacheRun(run){runCache.set(run.id,run);while(runCache.size>20)runCache.delete(runCache.keys().next().value);}
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('show'),3600);}
@@ -61,6 +62,9 @@ function journalMarkup(attempts,general) {
 }
 function render(){
   if(!state)return;
+  nativeWorkspace?.show(state).catch(error=>toast(error.message));
+  if(state.project.version===3){view?.setActive(false);$('#save').disabled=false;$('#new-project').disabled=!remote;return;}
+  view?.setActive(true);
   const displayed=player?.run?.project||state.project, general=displayed.version===2;
   renderWorkspaceHeader(displayed);
   $('#scene-toolbar').hidden=!general;
@@ -81,6 +85,7 @@ function render(){
   updateReplay();
 }
 function updateControls(){
+  if(state?.project.version===3)return;
   const historical=!!player?.run&&player.run.revision!==state?.project.revision;
   $('#run').disabled=busy||historical;$('#save').disabled=busy||historical;$('#open-project').disabled=busy;$('#reset-layout').disabled=busy;
   $('#solve').disabled=(busy&&!solving)||historical;$('#solve span').textContent=solving?'Stop tuning':'Auto-tune';
@@ -98,6 +103,7 @@ async function edit(operations,requestId=uid()){
   await refresh();return result;
 }
 function resetReplay(){
+  if(state.project.version===3){player?.clear();comparisonRun=null;view.setComparison(null);busy=false;lastRun=null;return;}
   player?.clear();comparisonRun=null;view.setComparison(null);busy=false;view.setProject(state.project);view.reset();view.select(selected);lastRun=null;
   $('#outcome').className='outcome';updateControls();
 }
@@ -139,6 +145,7 @@ async function runOnce(label){
   return run;
 }
 async function runHuman(){
+  if(state?.project.version===3){document.querySelector('#native-pause')?.click();return;}
   if(busy)return;busy=true;updateControls();
   try{const run=await runOnce();await play(run);}catch(error){toast(error.message);}finally{busy=false;updateControls();}
 }
@@ -217,8 +224,10 @@ async function init(){
   }
   $('#connection').innerHTML=`<i></i>${remote?'Local service connected':'Browser-only workspace'}`;
   $('#connection').classList.toggle('off',!remote);
-  view=new WorkbenchView($('#viewport'),id=>{selected=id;render();view.select(id);});view.setProject(state.project);view.select(selected);
+  view=new WorkbenchView($('#viewport'),id=>{selected=id;render();view.select(id);});view.setProject(state.project.version===3?initialScene():state.project);view.select(selected);
   player=new ReplayPlayer({onFrame:showReplayFrame,onChange:updateReplay,onEnd:finishedRun});
+  nativeWorkspace=new NativeWorkspace({api,getState:()=>state,refresh,toast});
+  $('#new-project').disabled=!remote;
   $('#loading').remove();render();
   if(savedError)toast(savedError);
   if(remote){
@@ -226,6 +235,7 @@ async function init(){
     source.addEventListener('state',event=>{const next=JSON.parse(event.data);const changed=next.project.revision!==state.project.revision;state=next;if(changed&&!solving&&player.run){resetReplay();toast('The saved layout changed. Returned to editing; older runs remain in the journal.');}if(!busy||changed)render();});
     source.addEventListener('run',event=>{const run=JSON.parse(event.data);cacheRun(run);if(!busy){busy=true;updateControls();play(run).catch(error=>toast(error.message)).finally(()=>{busy=false;render();});}});
     source.addEventListener('capture',handleCaptureEvent);
+    source.addEventListener('native',event=>nativeWorkspace.handle(JSON.parse(event.data)).catch(error=>toast(error.message)));
     source.onerror=()=>{$('#connection').innerHTML='<i></i>Service reconnecting';};
     source.onopen=()=>{$('#connection').innerHTML='<i></i>Local service connected';refresh().catch(()=>{});};
     config=await fetch('./api/config').then(r=>r.json());
@@ -235,6 +245,9 @@ async function init(){
   await reportAssetStatus();document.body.dataset.ready='true';
 }
 $('#parts').addEventListener('click',event=>{const button=event.target.closest('[data-part]');if(button){selected=button.dataset.part;render();view.select(selected);}});
+$('#new-project').onclick=()=>$('#project-dialog').showModal();
+$('#project-cancel').onclick=()=>$('#project-dialog').close();
+$('#project-create-form').onsubmit=async event=>{event.preventDefault();const button=$('#project-create');button.disabled=true;try{await api('project/create',{name:$('#project-name').value,expectedRevision:state.project.revision});$('#project-dialog').close();await refresh();}catch(error){toast(error.message);}finally{button.disabled=false;}};
 function inspectorValue(input) {
   if(input.dataset.json)return JSON.parse(input.value);
   return input.dataset.string?input.value:Number(input.value);

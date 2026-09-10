@@ -1,5 +1,29 @@
 # Kinetic — general workshop checkpoint
 
+## First native project implementation — 10 September 2026
+
+The vision/showcase commit `92ee95cee622903325eb28baf49170ae1ca4dd55` was pushed to `main` through `gh-axi` and verified at the remote branch. GitHub Actions run `34536715645` completed successfully. Implementation continued on `feat/native-projects` from that commit.
+
+Implemented a first source-project workflow: browser **New project**, CLI `project create/open/apply/pause/resume`, and the ninth MCP tool `kinetic_project`. Creation writes an editable empty Three.js entry, a manifest and dependency declaration. Version 3 snapshots use shared Workshop validation, revisions, history and persistence. Existing v1/v2 projects remain supported. The isolated WebGL preview serves adopted source/assets and the pinned Three.js runtime; it does not execute authored code on the service.
+
+Source adoption validates a separate candidate preview, then rechecks the expected revision before committing. Failed source and stale candidates preserve the accepted project. Live inspection derives Three.js matrices, bounds, axes, source references and frame/camera metadata. Native captures preserve the human camera. Basic object/whole-scene feedback stores the actual capture, source revision and native time/frame. Save/import and restart retain accepted source; unaccepted working-file edits do not silently reload. The original `examples/native-orbit/` demonstrates custom shader code, procedural objects and animation. See `docs/NATIVE-PROJECTS.md` for the contract and limits.
+
+Completed checks:
+
+- `npm test`: **93/93 passed**. `npm run build`: passed; static and **6.57 MB** standalone output.
+- Original browser **35/35**, replay **24/24**, general scene **24/24**, native project **24/24**: **107 browser checks**, all with zero unexpected page exceptions. Python tooling ran through `uv` with Playwright 1.57.0 and installed Chromium.
+- External stdio MCP returned **five original PNGs**, **five scene PNGs**, and **one native PNG**. The native suite exercised successful browser, CLI and MCP creation; source adoption; custom rendering; geometry probe; feedback; stale/broken candidates; host DOM/API isolation; directory restoration on undo; accepted-source persistence and portable import. Native acceptance is now part of CI.
+- Actual native desktop/mobile screenshots, legacy desktop/mobile captures, the native live demo and CLI PNG were inspected. One full-page live capture clipped the offscreen iframe; the original is preserved as `evidence/native-demo/capture-layout-failure.png`. Scrolling the viewport into view produced the complete render in `viewport-visible.png`; the CLI image independently contains the complete scene.
+- `git diff --check` passed. Ripwire reports **zero gating regressions**, with four scoped acknowledgments for small independent browser-test wrappers and the standalone example's resource disposal. Eleven new-symbol and five minor findings remain disclosed; this is not a zero-debt claim. Its named Node tests were included in the full suite, and the native browser test exercises additional callbacks that static reachability does not resolve.
+
+Evidence: `evidence/native-final-{node,build}.log`, `evidence/native-browser-final.log`, `evidence/native-regression-{browser-final,replay,scene}.log`, `evidence/native-browser/`, `evidence/native-demo/`, `evidence/native-quality-final.json`, `evidence/native-test-gate.txt`. The initial regression run exposed an outdated eight-tool MCP name assertion; its logs/results/screenshot are preserved in `evidence/native-first-regression-failure/`. The corrected assertion checks all nine real advertised tools. No-mistakes and actionlint are unavailable on this machine; no run of either is claimed.
+
+The GitHub API credential accepted source publication but rejected a tree containing a workflow-file edit. The workflow definition was preserved, and the existing `tests/scene-browser.py` CI entry point now runs native acceptance after its own checks, propagating failure. This keeps the new suite required in CI without changing workflow permissions or configuration.
+
+A foreground local demo service was started on loopback port 4317 with isolated state `evidence/native-demo/state.json`. Its `orbit-demo` source project was created and adopted through the CLI, and an isolated browser is connected. The default `.kinetic/workshop.json` was not replaced. No hosted deployment or agent scheduler is claimed.
+
+Remaining work: typed parameter editing, richer region/time annotations, explicit human review acceptance, durable historical builds/recordings, extra package/build integration, WebGPU support and native standalone experience export. The first bridge accepts adapted factory modules and WebGLRenderer; Fly With Me has not been integrated. Native preview/source budgets and a bounded inspection index remain explicit. This is the first implementation toward the broader goal, not completion of the full roadmap.
+
 ## Creation from scratch is first-class — 10 September 2026
 
 The user clarified that Kinetic must also create projects from scratch. Updated the vision, first roadmap milestone and README to cover both **New project** and **Open existing project** through a shared project/preview/revision/feedback/export model. New project must scaffold ordinary source, dependency/build setup and the Three.js bridge, open an empty preview, and give the agent the location, revision and capabilities. An existing repository, human-written boilerplate and mandatory templates are not prerequisites.

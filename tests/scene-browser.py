@@ -1,5 +1,5 @@
 """General-workshop acceptance: real UI, WebGL, physics, CLI and external stdio MCP."""
-import base64, json, os, struct, subprocess, tempfile, time, traceback, urllib.request, zlib
+import base64, json, os, struct, subprocess, sys, tempfile, time, traceback, urllib.request, zlib
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 from cli_support import invoke_cli
@@ -138,3 +138,5 @@ try{const inspected=await c.callTool({name:'kinetic_inspect',arguments:{capture:
     finally:
         service.terminate();service.wait(timeout=10);log.close();(OUT/'results.json').write_text(json.dumps(report,indent=2))
 if not report['success']:raise SystemExit(1)
+# Keep both scene formats covered by the shared CI acceptance entry point.
+subprocess.run([sys.executable,str(ROOT/'tests/native-browser.py')],cwd=ROOT,check=True)

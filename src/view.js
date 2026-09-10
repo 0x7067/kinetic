@@ -236,6 +236,7 @@ export class WorkbenchView {
       renderer.setPixelRatio(pixelRatio);renderer.setSize(originalSize.x,originalSize.y,false);
     }
   }
+  setActive(active) { if(active===this.running)return;this.running=active;if(active)this.loop();else cancelAnimationFrame(this.animation); }
   loop() { if(!this.running)return;this.controls.update();this.renderer.render(this.scene,this.camera);this.animation=requestAnimationFrame(()=>this.loop()); }
   dispose() { this.running=false;cancelAnimationFrame(this.animation);this.observer.disconnect();this.controls.dispose();this.clearGroup(this.scene);this.renderer.dispose(); }
 }

@@ -10,9 +10,9 @@ const invoke=(name,args)=>client.callTool({name,arguments:args});
 try {
   await client.connect(transport);
   const tools=await client.listTools();
-  assert.equal(tools.tools.length,8);
-  assert.deepEqual(new Set(tools.tools.map(t=>t.name)),new Set(['kinetic_inspect','kinetic_probe','kinetic_edit','kinetic_run','kinetic_view','kinetic_feedback','kinetic_replay','kinetic_compare']));
-  report.tests.push('MCP initialization and eight advertised tools');
+  assert.equal(tools.tools.length,9);
+  assert.deepEqual(new Set(tools.tools.map(t=>t.name)),new Set(['kinetic_project','kinetic_inspect','kinetic_probe','kinetic_edit','kinetic_run','kinetic_view','kinetic_feedback','kinetic_replay','kinetic_compare']));
+  report.tests.push('MCP initialization and nine advertised tools');
 
   const inspection=await invoke('kinetic_inspect',{capture:true});assert.ok(!inspection.isError);const initial=parsed(inspection);assert.equal(initial.rules.gravity,-9.81);assert.equal(initial.project.version,1);
   assert.equal(initial.analysis.parts.length,3);assert.equal(initial.analysis.gaps.length,2);assert.equal(initial.analysis.cameraRecommendations.length,3);
